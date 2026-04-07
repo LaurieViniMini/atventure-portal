@@ -1,0 +1,88 @@
+export const SCORE_CRITERIA = [
+  {
+    key: 'score_market' as const,
+    label: 'Market / Scalability',
+    question: 'How broad is the market size? Is the opportunity big enough?',
+    scale: '0 = small/niche → 5 = mass',
+    weight: 0.15,
+  },
+  {
+    key: 'score_audience' as const,
+    label: 'Audience',
+    question: 'Is the audience clear and smart?',
+    scale: '0 = no, unclear → 5 = very clear',
+    weight: 0.075,
+  },
+  {
+    key: 'score_competition' as const,
+    label: 'Competition',
+    question: 'How does the competition look?',
+    scale: '0 = crowded market → 5 = first mover or clear competitive advantage',
+    weight: 0.075,
+  },
+  {
+    key: 'score_gtm' as const,
+    label: 'Go to Market',
+    question: 'Is there a solid GTM plan?',
+    scale: '0 = no → 5 = yes',
+    weight: 0.075,
+  },
+  {
+    key: 'score_value_prop' as const,
+    label: 'Value Proposition',
+    question: 'Is there a clear and concise value proposition?',
+    scale: '0 = not clear → 5 = clear',
+    weight: 0.075,
+  },
+  {
+    key: 'score_financials' as const,
+    label: 'Financials',
+    question: 'Are the financials detailed, healthy and realistic?',
+    scale: '0 = unreliable → 5 = credible',
+    weight: 0.075,
+  },
+  {
+    key: 'score_product_ip' as const,
+    label: 'Product / IP',
+    question: 'Is there solid IP or a distinctive proposition?',
+    scale: '0 = no IP or distinction → 5 = strong IP or distinction',
+    weight: 0.075,
+  },
+  {
+    key: 'score_business_model' as const,
+    label: 'Business Model',
+    question: 'Is there a clear revenue generation model?',
+    scale: '0 = no → 5 = yes',
+    weight: 0.05,
+  },
+  {
+    key: 'score_team' as const,
+    label: 'Team / Founder',
+    question: 'Are the founders strong and experienced?',
+    scale: '0 = young/inexperienced → 5 = skilled/experienced',
+    weight: 0.20,
+  },
+  {
+    key: 'score_timing' as const,
+    label: 'Timing',
+    question: 'Is this the right time to enter?',
+    scale: '0 = no, too soon/late → 5 = yes',
+    weight: 0.05,
+  },
+  {
+    key: 'score_validation' as const,
+    label: 'Validation',
+    question: 'Is there market validation (revenue, members, etc)?',
+    scale: '0 = no → 5 = yes, significant',
+    weight: 0.05,
+  },
+  {
+    key: 'score_risks' as const,
+    label: 'Risks',
+    question: 'Are there any major risks?',
+    scale: '0 = yes, major → 5 = no',
+    weight: 0.05,
+  },
+] as const
+
+export type ScoreKey = (typeof SCORE_CRITERIA)[number]['key']
