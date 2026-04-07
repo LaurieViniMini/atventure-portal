@@ -8,10 +8,11 @@ import type { Startup, Review, IcMember } from '@/lib/types'
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  params: { startupId: string }
+  params: Promise<{ startupId: string }>
 }
 
 export default async function ReviewPage({ params }: Props) {
+  const { startupId } = await params
   const supabase = await createClient()
   const {
     data: { user },
@@ -25,7 +26,7 @@ export default async function ReviewPage({ params }: Props) {
     adminClient
       .from('startups')
       .select('*')
-      .eq('id', params.startupId)
+      .eq('id', startupId)
       .single<Startup>(),
     adminClient
       .from('ic_members')

@@ -13,10 +13,11 @@ import type { Startup, IcMember, ReviewWithMember, Recommendation } from '@/lib/
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default async function StartupDetailPage({ params }: Props) {
+  const { id } = await params
   const supabase = await createClient()
   const {
     data: { user },
@@ -29,7 +30,7 @@ export default async function StartupDetailPage({ params }: Props) {
   const { data: startup } = await adminClient
     .from('startups')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single<Startup>()
 
   if (!startup) notFound()
