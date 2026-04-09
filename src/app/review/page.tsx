@@ -25,6 +25,7 @@ export default async function ReviewDashboard() {
     .maybeSingle<IcMember>()
 
   if (!member) {
+    if (user.email === process.env.ADMIN_EMAIL) redirect('/admin')
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="card max-w-sm text-center">
