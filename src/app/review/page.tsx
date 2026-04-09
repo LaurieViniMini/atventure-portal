@@ -102,6 +102,11 @@ export default async function ReviewDashboard() {
             <span className="text-white/70 text-sm hidden sm:block">
               {member.name}
             </span>
+            {user.email === process.env.ADMIN_EMAIL && (
+              <Link href="/admin" className="text-white/60 hover:text-white text-sm transition-colors">
+                Admin
+              </Link>
+            )}
             <form action={signOut}>
               <button
                 type="submit"
