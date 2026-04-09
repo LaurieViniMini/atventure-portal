@@ -6,19 +6,20 @@ import type { Sector } from '@/lib/types'
 interface Props {
   startupId: string
   sector: Sector
+  assignedCount: number
+  assignedNames: string[]
 }
 
-export default function SendInvitesButton({ startupId, sector }: Props) {
+export default function SendInvitesButton({ startupId, sector, assignedCount, assignedNames }: Props) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
 
   async function handleSend() {
-    if (
-      !confirm(
-        `Send review invitation emails to all ${sector} IC members for this startup?`
-      )
-    )
-      return
+    const target = assignedCount > 0
+      ? `${assignedNames.join(', ')}`
+      : `all ${sector} IC members`
+
+    if (!confirm(`Send review invitation emails to: ${target}?`)) return
 
     setLoading(true)
     setResult(null)
@@ -45,27 +46,17 @@ export default function SendInvitesButton({ startupId, sector }: Props) {
         disabled={loading}
         className="btn-secondary text-sm flex items-center gap-2"
       >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-          />
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
         {loading ? 'Sending…' : 'Send Invitations'}
       </button>
+      {assignedCount > 0 && (
+        <p className="text-xs text-gray-400">→ {assignedNames.join(', ')}</p>
+      )}
       {result && (
-        <p
-          className={`text-xs ${
-            result.startsWith('Error') ? 'text-red-500' : 'text-green-600'
-          }`}
-        >
+        <p className={`text-xs ${result.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
           {result}
         </p>
       )}

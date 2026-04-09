@@ -9,6 +9,7 @@ import SectorBadge from '@/components/SectorBadge'
 import StatusUpdater from './StatusUpdater'
 import SendInvitesButton from './SendInvitesButton'
 import ReviewerManager from './ReviewerManager'
+import ReviewDetail from './ReviewDetail'
 import type { Startup, IcMember, ReviewWithMember, Recommendation } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -56,6 +57,8 @@ export default async function StartupDetailPage({ params }: Props) {
     .eq('startup_id', startup.id)
 
   const assignedIds = (assignments ?? []).map((a) => a.ic_member_id as string)
+  const assignedMembers = (allMembers ?? []).filter((m) => assignedIds.includes(m.id))
+  const assignedNames = assignedMembers.map((m) => m.name)
 
   // Compute aggregates
   const submitted = reviews ?? []
@@ -136,7 +139,12 @@ export default async function StartupDetailPage({ params }: Props) {
                   Pitch Deck
                 </a>
               )}
-              <SendInvitesButton startupId={startup.id} sector={startup.sector} />
+              <SendInvitesButton
+                startupId={startup.id}
+                sector={startup.sector}
+                assignedCount={assignedIds.length}
+                assignedNames={assignedNames}
+              />
             </div>
           </div>
 
@@ -353,6 +361,9 @@ export default async function StartupDetailPage({ params }: Props) {
             </div>
           </div>
         )}
+
+        {/* Per-reviewer full detail */}
+        <ReviewDetail reviews={submitted} />
 
         {submitted.length === 0 && (
           <div className="card text-center py-10 text-gray-400">

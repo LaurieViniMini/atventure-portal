@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user || user.email !== process.env.ADMIN_EMAIL) {
+  if (!user || user.email !== (process.env.ADMIN_EMAIL ?? '').trim()) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -25,20 +25,35 @@ export async function POST(request: Request) {
 
   const adminClient = createAdminClient()
 
-  // Get IC members for this sector (including 'All' catch-all)
-  const { data: members, error: membersError } = await adminClient
-    .from('ic_members')
-    .select('id, email, name')
-    .in('ic_type', [sector, 'All'])
+  // Check if there are explicit reviewer assignments
+  const { data: assignments } = await adminClient
+    .from('startup_reviewers')
+    .select('ic_member_id')
+    .eq('startup_id', startupId)
 
-  if (membersError) {
-    return NextResponse.json({ error: membersError.message }, { status: 500 })
+  let members
+
+  if (assignments && assignments.length > 0) {
+    // Send only to explicitly assigned reviewers
+    const ids = assignments.map((a) => a.ic_member_id)
+    const { data, error } = await adminClient
+      .from('ic_members')
+      .select('id, email, name')
+      .in('id', ids)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    members = data
+  } else {
+    // Fall back to sector-based
+    const { data, error } = await adminClient
+      .from('ic_members')
+      .select('id, email, name')
+      .in('ic_type', [sector, 'All'])
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    members = data
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
-  // Use a stateless anon client (no session cookies) so OTPs are sent
-  // independently of the currently logged-in admin session
   const anonClient = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
