@@ -11,6 +11,24 @@ export interface Startup {
   pitch_deck_url: string
   status: StartupStatus
   created_at: string
+  // Wix form fields
+  website?: string | null
+  location?: string | null
+  founding_date?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  business_model_description?: string | null
+  stage?: string | null
+  funding_raised?: string | null
+  traction?: string | null
+  mrr?: string | null
+  funding_target?: string | null
+  amount_committed?: string | null
+  round_type?: string | null
+  impact?: string | null
+  how_heard?: string | null
+  wix_submission_id?: string | null
 }
 
 export interface IcMember {

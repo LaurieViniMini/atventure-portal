@@ -70,6 +70,15 @@ export default async function StartupDetailPage({ params }: Props) {
     else overallRec = 'NO'
   }
 
+  function Field({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+      <div>
+        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">{label}</p>
+        <div className="text-gray-800">{children}</div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Nav */}
@@ -176,6 +185,49 @@ export default async function StartupDetailPage({ params }: Props) {
           <h2 className="font-semibold text-gray-900 mb-3">Update Status</h2>
           <StatusUpdater startupId={startup.id} currentStatus={startup.status} />
         </div>
+
+        {/* Wix application details */}
+        {(startup.contact_name || startup.contact_email || startup.stage || startup.funding_target) && (
+          <div className="card space-y-5">
+            <h2 className="font-semibold text-gray-900">Application Details</h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+              {startup.website && (
+                <Field label="Website">
+                  <a href={startup.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">{startup.website}</a>
+                </Field>
+              )}
+              {startup.location && <Field label="Location">{startup.location}</Field>}
+              {startup.founding_date && <Field label="Founding date">{startup.founding_date}</Field>}
+              {startup.contact_name && <Field label="Contact">{startup.contact_name}</Field>}
+              {startup.contact_email && (
+                <Field label="Contact email">
+                  <a href={`mailto:${startup.contact_email}`} className="text-primary hover:underline">{startup.contact_email}</a>
+                </Field>
+              )}
+              {startup.contact_phone && <Field label="Phone">{startup.contact_phone}</Field>}
+              {startup.stage && <Field label="Stage">{startup.stage}</Field>}
+              {startup.business_model_description && <Field label="Business model">{startup.business_model_description}</Field>}
+              {startup.funding_raised && <Field label="Funding raised">{startup.funding_raised}</Field>}
+              {startup.funding_target && <Field label="Round target">{startup.funding_target}</Field>}
+              {startup.amount_committed && <Field label="Committed">{startup.amount_committed}</Field>}
+              {startup.round_type && <Field label="Round type">{startup.round_type}</Field>}
+              {startup.mrr && <Field label="MRR">{startup.mrr}</Field>}
+              {startup.how_heard && <Field label="How heard">{startup.how_heard}</Field>}
+            </div>
+
+            {startup.traction && (
+              <Field label="Traction highlights">
+                <p className="whitespace-pre-line text-gray-700 text-sm">{startup.traction}</p>
+              </Field>
+            )}
+            {startup.impact && (
+              <Field label="Impact / Sustainability">
+                <p className="whitespace-pre-line text-gray-700 text-sm">{startup.impact}</p>
+              </Field>
+            )}
+          </div>
+        )}
 
         {/* Per-reviewer scores */}
         {submitted.length > 0 && (
