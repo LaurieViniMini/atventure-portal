@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import type { IcMember } from '@/lib/types'
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function ReviewerManager({ startupId, allMembers, assignedIds }: Props) {
+  const router = useRouter()
   const [assigned, setAssigned] = useState<Set<string>>(new Set(assignedIds))
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -38,6 +40,9 @@ export default function ReviewerManager({ startupId, allMembers, assignedIds }: 
         else next.add(memberId)
         return next
       })
+
+      // Refresh server props so SendInvitesButton shows updated names
+      router.refresh()
     })
   }
 
