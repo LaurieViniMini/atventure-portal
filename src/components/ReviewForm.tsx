@@ -18,9 +18,10 @@ interface ReviewFormProps {
   startup: Startup
   existingReview: Review | null
   icMemberId: string
+  isPreScreen?: boolean
 }
 
-export default function ReviewForm({ startup, existingReview, icMemberId }: ReviewFormProps) {
+export default function ReviewForm({ startup, existingReview, icMemberId, isPreScreen = false }: ReviewFormProps) {
   const router = useRouter()
   const isSubmitted = Boolean(existingReview?.submitted_at)
   const isPassed = Boolean(existingReview?.passed)
@@ -145,14 +146,25 @@ export default function ReviewForm({ startup, existingReview, icMemberId }: Revi
 
       {/* ── STAGE 1: GATING ── */}
       <div className="card border-l-4 border-l-amber-400">
-        <h2 className="font-bold text-gray-900 text-lg mb-1">Stage 1 — Gating</h2>
-        <p className="text-sm text-gray-500 mb-5">
-          Complete before scoring. If No Harm scores 0, stop immediately.
-          If total of first three criteria is 3 or below, pass the deal.
-        </p>
+        {isPreScreen ? (
+          <>
+            <h2 className="font-bold text-gray-900 text-lg mb-1">Stage 1 — Gating (Deal Lead)</h2>
+            <p className="text-sm text-gray-500 mb-5">
+              Complete before scoring. If No Harm scores 0, stop immediately.
+              If total of first three criteria is 3 or below, pass the deal.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 className="font-bold text-gray-900 text-lg mb-1">No Harm Check</h2>
+            <p className="text-sm text-gray-500 mb-5">
+              Complete this check before scoring. If the company scores 0, do not proceed.
+            </p>
+          </>
+        )}
 
         <div className="space-y-6">
-          {/* No harm — shown first */}
+          {/* No harm — always shown */}
           <div className="bg-red-50 border border-red-100 rounded-xl p-4">
             <p className="font-semibold text-sm text-gray-800">{NO_HARM_CRITERION.label}</p>
             <p className="text-sm text-gray-600 mt-0.5 mb-3">{NO_HARM_CRITERION.question}</p>
@@ -177,8 +189,8 @@ export default function ReviewForm({ startup, existingReview, icMemberId }: Revi
             </div>
           </div>
 
-          {/* 3 gating criteria */}
-          {GATING_CRITERIA.map((criterion) => (
+          {/* 3 gating criteria — PreScreen only */}
+          {isPreScreen && GATING_CRITERIA.map((criterion) => (
             <div key={criterion.key} className="pb-5 border-b border-gray-100 last:border-0 last:pb-0">
               <p className="font-semibold text-sm text-gray-800">{criterion.label}</p>
               <p className="text-sm text-gray-600 mt-0.5 mb-3">{criterion.question}</p>
@@ -203,8 +215,8 @@ export default function ReviewForm({ startup, existingReview, icMemberId }: Revi
           ))}
         </div>
 
-        {/* Gate result banner */}
-        {gateResult && (
+        {/* Gate result banner — PreScreen only */}
+        {isPreScreen && gateResult && (
           <div className={`mt-5 rounded-xl px-4 py-3 text-sm font-semibold ${
             gateResult.color === 'red'    ? 'bg-red-100 text-red-700 border border-red-200' :
             gateResult.color === 'orange' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
@@ -282,6 +294,27 @@ export default function ReviewForm({ startup, existingReview, icMemberId }: Revi
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Score summary at bottom of scoring */}
+          <div className={`rounded-xl px-4 py-3 border ${
+            pct >= THRESHOLDS.YES ? 'bg-green-50 border-green-200' :
+            pct >= THRESHOLDS.MAYBE ? 'bg-amber-50 border-amber-200' :
+            'bg-red-50 border-red-200'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Weighted total</p>
+                <p className="text-3xl font-bold text-gray-900 mt-0.5">
+                  {pct.toFixed(0)}<span className="text-sm font-normal text-gray-400">%</span>
+                  <span className="text-sm text-gray-400 font-normal ml-2">({weightedTotal.toFixed(2)}/5)</span>
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-400 mb-1">Suggested recommendation</p>
+                <RecommendationBadge recommendation={suggestedRec} />
+              </div>
+            </div>
           </div>
 
           {/* Qualitative flags */}

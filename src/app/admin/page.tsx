@@ -84,6 +84,9 @@ export default async function AdminDashboard() {
             </span>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/admin/ic-members" className="text-white/60 hover:text-white text-sm transition-colors">
+              IC Members
+            </Link>
             <Link href="/review" className="text-white/60 hover:text-white text-sm transition-colors">
               My Reviews
             </Link>

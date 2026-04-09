@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import type { StartupStatus } from '@/lib/types'
 
 const STATUS_OPTIONS: { value: StartupStatus; label: string }[] = [
-  { value: 'pending_review', label: 'Pending Review' },
-  { value: 'reviewed', label: 'Reviewed' },
-  { value: 'invited', label: 'Invited' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'portco', label: 'Portfolio Co.' },
+  { value: 'pre_screening',        label: 'Pre-screening' },
+  { value: 'to_review_sector_ic',  label: 'Sector IC Review' },
+  { value: 'to_review_general_ic', label: 'General IC Review' },
+  { value: 'ok_for_pitching',      label: 'OK for Pitching' },
+  { value: 'in_dd',                label: 'In DD' },
+  { value: 'rejected',             label: 'Rejected' },
+  { value: 'invested',             label: 'Invested' },
 ]
 
 interface Props {
@@ -26,13 +28,11 @@ export default function StatusUpdater({ startupId, currentStatus }: Props) {
   async function handleSave() {
     setSaving(true)
     setSaved(false)
-
     const res = await fetch(`/api/admin/startups/${startupId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
-
     if (res.ok) {
       setSaved(true)
       router.refresh()
@@ -44,17 +44,16 @@ export default function StatusUpdater({ startupId, currentStatus }: Props) {
     <div className="flex items-center gap-3">
       <select
         value={status}
-        onChange={(e) => {
-          setStatus(e.target.value as StartupStatus)
-          setSaved(false)
-        }}
+        onChange={(e) => { setStatus(e.target.value as StartupStatus); setSaved(false) }}
         className="input w-auto"
       >
         {STATUS_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
+        {/* Show legacy status if current status is legacy */}
+        {!STATUS_OPTIONS.find(o => o.value === currentStatus) && (
+          <option value={currentStatus}>{currentStatus}</option>
+        )}
       </select>
       <button
         onClick={handleSave}
@@ -63,9 +62,7 @@ export default function StatusUpdater({ startupId, currentStatus }: Props) {
       >
         {saving ? 'Saving…' : 'Save'}
       </button>
-      {saved && (
-        <span className="text-green-600 text-sm font-medium">Saved!</span>
-      )}
+      {saved && <span className="text-green-600 text-sm font-medium">Saved!</span>}
     </div>
   )
 }

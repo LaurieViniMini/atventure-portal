@@ -1,6 +1,19 @@
 export type Sector = 'General' | 'Retail' | 'Health' | 'Food'
-export type IcType = 'General' | 'Retail' | 'Health' | 'Food' | 'All'
-export type StartupStatus = 'pending_review' | 'reviewed' | 'invited' | 'rejected' | 'portco'
+export type IcType = 'General' | 'Retail' | 'Health' | 'Food' | 'All' | 'PreScreen'
+export type StartupStatus =
+  // Current statuses
+  | 'pre_screening'
+  | 'to_review_sector_ic'
+  | 'to_review_general_ic'
+  | 'ok_for_pitching'
+  | 'in_dd'
+  | 'rejected'
+  | 'invested'
+  // Legacy (backwards compat)
+  | 'pending_review'
+  | 'reviewed'
+  | 'invited'
+  | 'portco'
 export type Recommendation = 'YES' | 'MAYBE' | 'NO'
 export type DiverseTeam = 'Yes' | 'Partial' | 'No'
 
@@ -61,7 +74,7 @@ export interface Review {
   score_value_prop?: number | null
   score_timing?: number | null
   score_risks?: number | null
-  // Stage 1 gating
+  // Stage 1 gating (PreScreen only)
   gate_10x: number | null
   gate_problem_significance: number | null
   gate_must_have: number | null

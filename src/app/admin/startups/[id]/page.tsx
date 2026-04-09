@@ -10,6 +10,7 @@ import StatusUpdater from './StatusUpdater'
 import SendInvitesButton from './SendInvitesButton'
 import ReviewerManager from './ReviewerManager'
 import ReviewDetail from './ReviewDetail'
+import DeleteButton from './DeleteButton'
 import type { Startup, IcMember, ReviewWithMember, Recommendation } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -180,7 +181,10 @@ export default async function StartupDetailPage({ params }: Props) {
 
         {/* Status updater */}
         <div className="card">
-          <h2 className="font-semibold text-gray-900 mb-3">Update Status</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-gray-900">Update Status</h2>
+            <DeleteButton startupId={startup.id} />
+          </div>
           <StatusUpdater startupId={startup.id} currentStatus={startup.status} />
         </div>
 

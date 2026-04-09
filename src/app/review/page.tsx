@@ -39,6 +39,8 @@ export default async function ReviewDashboard() {
     )
   }
 
+  const isPreScreen = member.ic_type === 'PreScreen'
+
   // Check if there are any explicit reviewer assignments for this member
   const { data: assignments } = await adminClient
     .from('startup_reviewers')
@@ -57,12 +59,23 @@ export default async function ReviewDashboard() {
       .neq('status', 'rejected')
       .order('created_at', { ascending: false })
     startups = data ?? []
+  } else if (isPreScreen) {
+    // PreScreen members see all startups (they pre-screen everything)
+    const { data } = await adminClient
+      .from('startups')
+      .select('*')
+      .neq('status', 'rejected')
+      .neq('status', 'invested')
+      .order('created_at', { ascending: false })
+    startups = (data as Startup[]) ?? []
   } else {
-    // Fall back to sector-based assignment (excluding rejected)
+    // Regular IC: sector-based, exclude pre_screening and rejected
     let query = adminClient
       .from('startups')
       .select('*')
       .neq('status', 'rejected')
+      .neq('status', 'pre_screening')
+      .neq('status', 'pending_review')
       .order('created_at', { ascending: false })
 
     if (member.ic_type !== 'All') {
