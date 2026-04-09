@@ -43,20 +43,21 @@ function get(fields: Record<string, string>, ...keys: string[]): string {
 }
 
 export async function POST(request: Request) {
-  // Verify webhook secret
-  const secret = process.env.WEBHOOK_SECRET
-  if (secret) {
-    const headerSecret = request.headers.get('x-webhook-secret')
-    if (headerSecret !== secret) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  }
-
   let body: Record<string, unknown>
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  // Verify webhook secret (via header or body param)
+  const secret = process.env.WEBHOOK_SECRET
+  if (secret) {
+    const headerSecret = request.headers.get('x-webhook-secret')
+    const bodySecret = String(body.secret || body.webhook_secret || '')
+    if (headerSecret !== secret && bodySecret !== secret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
   }
 
   const fields = extractFields(body)
