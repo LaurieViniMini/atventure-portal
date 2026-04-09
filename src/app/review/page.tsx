@@ -38,14 +38,39 @@ export default async function ReviewDashboard() {
     )
   }
 
-  // Get startups assigned to this member based on ic_type
-  let query = adminClient.from('startups').select('*').order('created_at', { ascending: false })
+  // Check if there are any explicit reviewer assignments for this member
+  const { data: assignments } = await adminClient
+    .from('startup_reviewers')
+    .select('startup_id')
+    .eq('ic_member_id', member.id)
 
-  if (member.ic_type !== 'All') {
-    query = query.eq('sector', member.ic_type)
+  let startups: Startup[] = []
+
+  if (assignments && assignments.length > 0) {
+    // If explicitly assigned to specific startups, show only those
+    const assignedIds = assignments.map((a) => a.startup_id)
+    const { data } = await adminClient
+      .from('startups')
+      .select('*')
+      .in('id', assignedIds)
+      .neq('status', 'rejected')
+      .order('created_at', { ascending: false })
+    startups = data ?? []
+  } else {
+    // Fall back to sector-based assignment (excluding rejected)
+    let query = adminClient
+      .from('startups')
+      .select('*')
+      .neq('status', 'rejected')
+      .order('created_at', { ascending: false })
+
+    if (member.ic_type !== 'All') {
+      query = query.eq('sector', member.ic_type)
+    }
+
+    const { data } = await query
+    startups = (data as Startup[]) ?? []
   }
-
-  const { data: startups = [] } = await query as { data: Startup[] | null }
 
   // Get all reviews by this member
   const { data: reviews = [] } = await adminClient
@@ -100,7 +125,7 @@ export default async function ReviewDashboard() {
           </p>
         </div>
 
-        {!startups || startups.length === 0 ? (
+        {startups.length === 0 ? (
           <div className="card text-center py-12 text-gray-500">
             No startups assigned yet. Check back soon.
           </div>
@@ -108,12 +133,17 @@ export default async function ReviewDashboard() {
           <div className="space-y-4">
             {startups.map((startup) => {
               const review = reviewMap.get(startup.id)
-              const statusLabel = review?.submitted_at
+              const isPassed = review?.passed
+              const statusLabel = isPassed
+                ? 'Passed'
+                : review?.submitted_at
                 ? 'Submitted'
                 : review
                 ? 'Draft'
                 : 'Not started'
-              const statusClass = review?.submitted_at
+              const statusClass = isPassed
+                ? 'bg-gray-100 text-gray-400'
+                : review?.submitted_at
                 ? 'bg-green-100 text-green-700'
                 : review
                 ? 'bg-amber-100 text-amber-700'
@@ -142,7 +172,7 @@ export default async function ReviewDashboard() {
                     >
                       {statusLabel}
                     </span>
-                    {review?.submitted_at && review.weighted_total != null && (
+                    {review?.submitted_at && !isPassed && review.weighted_total != null && (
                       <span className="text-sm font-bold text-gray-700">
                         {review.weighted_total.toFixed(2)}
                         <span className="text-gray-400 font-normal">/5</span>

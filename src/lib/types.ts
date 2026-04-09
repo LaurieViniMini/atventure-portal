@@ -2,6 +2,7 @@ export type Sector = 'General' | 'Retail' | 'Health' | 'Food'
 export type IcType = 'General' | 'Retail' | 'Health' | 'Food' | 'All'
 export type StartupStatus = 'pending_review' | 'reviewed' | 'invited' | 'rejected' | 'portco'
 export type Recommendation = 'YES' | 'MAYBE' | 'NO'
+export type DiverseTeam = 'Yes' | 'Partial' | 'No'
 
 export interface Startup {
   id: string
@@ -43,21 +44,36 @@ export interface Review {
   id: string
   startup_id: string
   ic_member_id: string
+  // Stage 2 scores
+  score_team: number
   score_market: number
-  score_audience: number
+  score_10x: number
+  score_must_have: number
+  score_business_model: number
+  score_product_ip: number
+  score_validation: number
+  score_impact: number
   score_competition: number
   score_gtm: number
-  score_value_prop: number
   score_financials: number
-  score_product_ip: number
-  score_business_model: number
-  score_team: number
-  score_timing: number
-  score_validation: number
-  score_risks: number
+  // Legacy (kept for backwards compat, not used in v2 formula)
+  score_audience?: number | null
+  score_value_prop?: number | null
+  score_timing?: number | null
+  score_risks?: number | null
+  // Stage 1 gating
+  gate_10x: number | null
+  gate_problem_significance: number | null
+  gate_must_have: number | null
+  gate_no_harm: number | null
+  // Qualitative
+  diverse_team: DiverseTeam | null
+  key_risks: string | null
+  // Result
   weighted_total: number
   comments: string
   recommendation: Recommendation | null
+  passed: boolean
   submitted_at: string | null
   created_at: string
   updated_at: string
@@ -73,4 +89,9 @@ export interface StartupWithStats extends Startup {
   yes_count: number
   maybe_count: number
   no_count: number
+}
+
+export interface StartupReviewer {
+  startup_id: string
+  ic_member_id: string
 }

@@ -2,12 +2,13 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { SCORE_CRITERIA } from '@/lib/criteria'
+import { SCORE_CRITERIA, GATING_CRITERIA } from '@/lib/criteria'
 import RecommendationBadge from '@/components/RecommendationBadge'
 import StatusBadge from '@/components/StatusBadge'
 import SectorBadge from '@/components/SectorBadge'
 import StatusUpdater from './StatusUpdater'
 import SendInvitesButton from './SendInvitesButton'
+import ReviewerManager from './ReviewerManager'
 import type { Startup, IcMember, ReviewWithMember, Recommendation } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -35,28 +36,39 @@ export default async function StartupDetailPage({ params }: Props) {
 
   if (!startup) notFound()
 
-  // Get reviews with member info
+  // Get reviews with member info (submitted only)
   const { data: reviews = [] } = await adminClient
     .from('reviews')
     .select('*, ic_members(*)')
     .eq('startup_id', startup.id)
     .not('submitted_at', 'is', null) as { data: ReviewWithMember[] | null }
 
+  // All IC members for reviewer management
+  const { data: allMembers = [] } = await adminClient
+    .from('ic_members')
+    .select('*')
+    .order('name') as { data: IcMember[] | null }
+
+  // Current explicit reviewer assignments
+  const { data: assignments = [] } = await adminClient
+    .from('startup_reviewers')
+    .select('ic_member_id')
+    .eq('startup_id', startup.id)
+
+  const assignedIds = (assignments ?? []).map((a) => a.ic_member_id as string)
+
   // Compute aggregates
   const submitted = reviews ?? []
   const avgPerCriterion: Record<string, number> = {}
   SCORE_CRITERIA.forEach(({ key }) => {
-    if (submitted.length === 0) {
-      avgPerCriterion[key] = 0
-    } else {
-      avgPerCriterion[key] =
-        submitted.reduce((sum, r) => sum + (r[key] ?? 0), 0) / submitted.length
-    }
+    avgPerCriterion[key] =
+      submitted.length === 0
+        ? 0
+        : submitted.reduce((sum, r) => sum + (r[key] ?? 0), 0) / submitted.length
   })
   const avgTotal =
     submitted.length > 0
-      ? submitted.reduce((sum, r) => sum + (r.weighted_total ?? 0), 0) /
-        submitted.length
+      ? submitted.reduce((sum, r) => sum + (r.weighted_total ?? 0), 0) / submitted.length
       : null
 
   const yesCnt = submitted.filter((r) => r.recommendation === 'YES').length
@@ -84,22 +96,9 @@ export default async function StartupDetailPage({ params }: Props) {
       {/* Nav */}
       <nav className="bg-brand-dark shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link
-            href="/admin"
-            className="text-white/60 hover:text-white transition-colors"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
+          <Link href="/admin" className="text-white/60 hover:text-white transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
           <div className="w-px h-5 bg-white/20" />
@@ -119,14 +118,10 @@ export default async function StartupDetailPage({ params }: Props) {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {startup.name}
-                </h1>
+                <h1 className="text-2xl font-bold text-gray-900">{startup.name}</h1>
                 <SectorBadge sector={startup.sector} />
                 <StatusBadge status={startup.status} />
-                {overallRec && (
-                  <RecommendationBadge recommendation={overallRec} />
-                )}
+                {overallRec && <RecommendationBadge recommendation={overallRec} />}
               </div>
               <p className="text-gray-500 mt-2">{startup.one_liner}</p>
             </div>
@@ -141,18 +136,13 @@ export default async function StartupDetailPage({ params }: Props) {
                   Pitch Deck
                 </a>
               )}
-              <SendInvitesButton
-                startupId={startup.id}
-                sector={startup.sector}
-              />
+              <SendInvitesButton startupId={startup.id} sector={startup.sector} />
             </div>
           </div>
 
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-gray-900">
-                {submitted.length}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{submitted.length}</p>
               <p className="text-xs text-gray-500 mt-1">Reviews submitted</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4 text-center">
@@ -184,6 +174,16 @@ export default async function StartupDetailPage({ params }: Props) {
         <div className="card">
           <h2 className="font-semibold text-gray-900 mb-3">Update Status</h2>
           <StatusUpdater startupId={startup.id} currentStatus={startup.status} />
+        </div>
+
+        {/* Reviewer management */}
+        <div className="card">
+          <h2 className="font-semibold text-gray-900 mb-1">Reviewer Assignment</h2>
+          <ReviewerManager
+            startupId={startup.id}
+            allMembers={allMembers ?? []}
+            assignedIds={assignedIds}
+          />
         </div>
 
         {/* Wix application details */}
@@ -233,9 +233,7 @@ export default async function StartupDetailPage({ params }: Props) {
         {submitted.length > 0 && (
           <div className="card p-0 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-900">
-                Reviewer Scores
-              </h2>
+              <h2 className="font-semibold text-gray-900">Reviewer Scores</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -244,26 +242,33 @@ export default async function StartupDetailPage({ params }: Props) {
                     <th className="text-left px-4 py-3 font-medium text-gray-600 sticky left-0 bg-gray-50 min-w-[130px]">
                       Reviewer
                     </th>
+                    {/* Stage 1 gates */}
+                    {GATING_CRITERIA.map((c) => (
+                      <th
+                        key={c.key}
+                        className="text-center px-2 py-3 font-medium text-amber-600 whitespace-nowrap bg-amber-50"
+                        title={c.question}
+                      >
+                        G-{c.label.split(' ')[0].slice(0, 3).toUpperCase()}
+                      </th>
+                    ))}
+                    <th className="text-center px-2 py-3 font-medium text-amber-600 whitespace-nowrap bg-amber-50" title="No Harm">
+                      G-NH
+                    </th>
+                    {/* Stage 2 scores */}
                     {SCORE_CRITERIA.map((c) => (
                       <th
                         key={c.key}
                         className="text-center px-2 py-3 font-medium text-gray-600 whitespace-nowrap"
                         title={c.question}
                       >
-                        {c.label
-                          .split(' ')
-                          .map((w) => w[0])
-                          .join('')
-                          .toUpperCase()
-                          .slice(0, 3)}
+                        {c.label.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 3)}
                       </th>
                     ))}
                     <th className="text-center px-3 py-3 font-medium text-gray-600 bg-primary/5">
                       Total
                     </th>
-                    <th className="text-center px-3 py-3 font-medium text-gray-600">
-                      Rec.
-                    </th>
+                    <th className="text-center px-3 py-3 font-medium text-gray-600">Rec.</th>
                     <th className="text-left px-3 py-3 font-medium text-gray-600 min-w-[200px]">
                       Comments
                     </th>
@@ -275,11 +280,16 @@ export default async function StartupDetailPage({ params }: Props) {
                       <td className="px-4 py-3 font-medium text-gray-800 sticky left-0 bg-white">
                         {review.ic_members?.name ?? '—'}
                       </td>
+                      {GATING_CRITERIA.map((c) => (
+                        <td key={c.key} className="px-2 py-3 text-center text-amber-700 bg-amber-50/50">
+                          {review[c.key] ?? '—'}
+                        </td>
+                      ))}
+                      <td className="px-2 py-3 text-center text-amber-700 bg-amber-50/50">
+                        {review.gate_no_harm ?? '—'}
+                      </td>
                       {SCORE_CRITERIA.map((c) => (
-                        <td
-                          key={c.key}
-                          className="px-2 py-3 text-center text-gray-700"
-                        >
+                        <td key={c.key} className="px-2 py-3 text-center text-gray-700">
                           {review[c.key] ?? '—'}
                         </td>
                       ))}
@@ -287,9 +297,7 @@ export default async function StartupDetailPage({ params }: Props) {
                         {review.weighted_total?.toFixed(2) ?? '—'}
                       </td>
                       <td className="px-3 py-3 text-center">
-                        <RecommendationBadge
-                          recommendation={review.recommendation}
-                        />
+                        <RecommendationBadge recommendation={review.recommendation} />
                       </td>
                       <td className="px-3 py-3 text-gray-500 max-w-xs">
                         <p className="truncate">{review.comments || '—'}</p>
@@ -299,14 +307,21 @@ export default async function StartupDetailPage({ params }: Props) {
 
                   {/* Aggregate row */}
                   <tr className="bg-primary/5 border-t-2 border-primary/20 font-semibold">
-                    <td className="px-4 py-3 text-gray-700 sticky left-0 bg-primary/5">
-                      Average
+                    <td className="px-4 py-3 text-gray-700 sticky left-0 bg-primary/5">Average</td>
+                    {GATING_CRITERIA.map((c) => (
+                      <td key={c.key} className="px-2 py-3 text-center text-amber-700">
+                        {submitted.length > 0
+                          ? (submitted.reduce((s, r) => s + (r[c.key] ?? 0), 0) / submitted.length).toFixed(1)
+                          : '—'}
+                      </td>
+                    ))}
+                    <td className="px-2 py-3 text-center text-amber-700">
+                      {submitted.length > 0
+                        ? (submitted.reduce((s, r) => s + (r.gate_no_harm ?? 0), 0) / submitted.length).toFixed(1)
+                        : '—'}
                     </td>
                     {SCORE_CRITERIA.map((c) => (
-                      <td
-                        key={c.key}
-                        className="px-2 py-3 text-center text-gray-700"
-                      >
+                      <td key={c.key} className="px-2 py-3 text-center text-gray-700">
                         {avgPerCriterion[c.key].toFixed(1)}
                       </td>
                     ))}
@@ -322,19 +337,14 @@ export default async function StartupDetailPage({ params }: Props) {
               </table>
             </div>
 
-            {/* Column legend */}
+            {/* Legend */}
             <div className="px-6 py-3 border-t border-gray-100 bg-gray-50">
-              <p className="text-xs text-gray-400 font-medium mb-1">Legend:</p>
+              <p className="text-xs text-gray-400 font-medium mb-1">Stage 2 Legend:</p>
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {SCORE_CRITERIA.map((c) => (
                   <span key={c.key} className="text-xs text-gray-400">
                     <span className="font-medium text-gray-500">
-                      {c.label
-                        .split(' ')
-                        .map((w) => w[0])
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 3)}
+                      {c.label.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 3)}
                     </span>{' '}
                     = {c.label}
                   </span>
@@ -346,8 +356,7 @@ export default async function StartupDetailPage({ params }: Props) {
 
         {submitted.length === 0 && (
           <div className="card text-center py-10 text-gray-400">
-            No submitted reviews yet. Send invitations to IC members to start
-            collecting scores.
+            No submitted reviews yet. Send invitations to IC members to start collecting scores.
           </div>
         )}
       </div>

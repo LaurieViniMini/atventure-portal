@@ -17,18 +17,28 @@ export async function POST(request: Request) {
   const {
     startup_id,
     ic_member_id,
+    // Stage 2 scores
+    score_team,
     score_market,
-    score_audience,
+    score_10x,
+    score_must_have,
+    score_business_model,
+    score_product_ip,
+    score_validation,
+    score_impact,
     score_competition,
     score_gtm,
-    score_value_prop,
     score_financials,
-    score_product_ip,
-    score_business_model,
-    score_team,
-    score_timing,
-    score_validation,
-    score_risks,
+    // Stage 1 gating
+    gate_10x,
+    gate_problem_significance,
+    gate_must_have,
+    gate_no_harm,
+    // Qualitative
+    diverse_team,
+    key_risks,
+    // Flags
+    pass,
     comments,
     recommendation,
     submit,
@@ -50,24 +60,33 @@ export async function POST(request: Request) {
   }
 
   const scores = {
-    score_market,
-    score_audience,
-    score_competition,
-    score_gtm,
-    score_value_prop,
-    score_financials,
-    score_product_ip,
-    score_business_model,
-    score_team,
-    score_timing,
-    score_validation,
-    score_risks,
+    score_team: score_team ?? 0,
+    score_market: score_market ?? 0,
+    score_10x: score_10x ?? 0,
+    score_must_have: score_must_have ?? 0,
+    score_business_model: score_business_model ?? 0,
+    score_product_ip: score_product_ip ?? 0,
+    score_validation: score_validation ?? 0,
+    score_impact: score_impact ?? 0,
+    score_competition: score_competition ?? 0,
+    score_gtm: score_gtm ?? 0,
+    score_financials: score_financials ?? 0,
   }
 
   const weighted_total = calculateWeightedTotal(scores)
 
   const payload = {
     ...scores,
+    // Stage 1 gating
+    gate_10x: gate_10x ?? null,
+    gate_problem_significance: gate_problem_significance ?? null,
+    gate_must_have: gate_must_have ?? null,
+    gate_no_harm: gate_no_harm ?? null,
+    // Qualitative
+    diverse_team: diverse_team ?? null,
+    key_risks: key_risks ?? null,
+    // Pass flag
+    passed: pass ?? false,
     weighted_total,
     comments: comments ?? '',
     recommendation: recommendation ?? null,
