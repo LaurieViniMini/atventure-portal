@@ -24,7 +24,7 @@ export default async function StartupDetailPage({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  if (user.email !== process.env.ADMIN_EMAIL) redirect('/review')
+  if (user.email !== (process.env.ADMIN_EMAIL ?? '').trim()) redirect('/review')
 
   const adminClient = createAdminClient()
 

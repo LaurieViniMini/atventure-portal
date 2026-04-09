@@ -13,7 +13,7 @@ export default async function AdminLayout({
 
   if (!user) redirect('/login')
 
-  if (user.email !== process.env.ADMIN_EMAIL) {
+  if (user.email !== (process.env.ADMIN_EMAIL ?? '').trim()) {
     redirect('/review')
   }
 
