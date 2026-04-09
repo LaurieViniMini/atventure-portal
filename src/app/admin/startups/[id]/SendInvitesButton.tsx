@@ -32,7 +32,8 @@ export default function SendInvitesButton({ startupId, sector, assignedCount, as
 
     const data = await res.json()
     if (res.ok) {
-      setResult(`Sent to ${data.count} member${data.count !== 1 ? 's' : ''}`)
+      const failMsg = data.failed?.length > 0 ? ` — ${data.failed.join(', ')}` : ''
+      setResult(`Sent to ${data.count}/${data.total} members${failMsg}`)
     } else {
       setResult(`Error: ${data.error}`)
     }
