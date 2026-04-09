@@ -74,6 +74,13 @@ export async function POST(request: Request) {
   const lastName  = get(fields, 'Primary contact last name',  'contact_last_name',  'last_name')
   const contactName = [firstName, lastName].filter(Boolean).join(' ')
 
+  // Pitch deck: prefer direct URL link, fall back to Wix file upload URL
+  const pitchDeckUrl =
+    get(fields, 'Or share a link to your pitchdeck') ||
+    get(fields, 'Pitch deck') ||
+    get(fields, 'Please share your pitchdeck') ||
+    get(fields, 'pitch_deck_url')
+
   const startup = {
     name,
     one_liner: get(
@@ -84,20 +91,20 @@ export async function POST(request: Request) {
       'one_liner'
     ).slice(0, 500),
     sector,
-    pitch_deck_url: get(fields, 'Please share your pitchdeck', 'Pitch deck', 'pitchdeck', 'pitch_deck_url'),
+    pitch_deck_url: pitchDeckUrl,
     status: 'pending_review' as const,
-    // Extra Wix fields
+    // Extra Wix fields — exact label names from the form
     website:       get(fields, 'Company website', 'website'),
-    location:      get(fields, 'Company primary location', 'location', 'city'),
-    founding_date: get(fields, 'Founding date', 'founding_date'),
+    location:      get(fields, 'Company primary location', 'location'),
+    founding_date: get(fields, 'Founding Date', 'Founding date', 'founding_date'),
     contact_name:  contactName,
     contact_email: get(fields, 'Primary contact email address', 'contact_email', 'email'),
     contact_phone: get(fields, 'Primary contact phone number', 'contact_phone', 'phone'),
-    business_model_description: get(fields, 'Business model', 'business_model'),
+    business_model_description: get(fields, 'Business Model', 'Business model', 'business_model'),
     stage:            get(fields, 'Stage', 'stage'),
     funding_raised:   get(fields, 'Total funding raised to date (EUR)', 'funding_raised'),
     traction:         get(fields, 'Key traction highlights (revenue, customers, users, etc.)', 'Key traction highlights', 'traction'),
-    mrr:              get(fields, 'Monthly recurring revenue (EUR, if applicable)', 'Monthly recurring revenue', 'mrr'),
+    mrr:              get(fields, 'Monthly recurring revenue (if applicable)', 'Monthly recurring revenue (EUR, if applicable)', 'Monthly recurring revenue', 'mrr'),
     funding_target:   get(fields, 'Current funding round target (EUR)', 'funding_target'),
     amount_committed: get(fields, 'Amount already committed (EUR)', 'amount_committed'),
     round_type:       get(fields, 'Type of round (equity, convertible, SAFE, other)', 'Type of round', 'round_type'),
