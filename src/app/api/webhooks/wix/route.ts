@@ -135,6 +135,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  await logWebhook(body, 'inserted:' + data.id, null)
+  await logWebhook(body, 'inserted:' + data.id)
   return NextResponse.json({ success: true, startup_id: data.id }, { status: 201 })
 }
