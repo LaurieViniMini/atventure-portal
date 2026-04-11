@@ -50,17 +50,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
+  // Debug: log full payload so we can inspect in Vercel logs
+  console.log('[wix-webhook] raw body keys:', Object.keys(body))
+  console.log('[wix-webhook] raw body:', JSON.stringify(body).slice(0, 2000))
+
   // Verify webhook secret (via header or body param)
   const secret = process.env.WEBHOOK_SECRET
   if (secret) {
     const headerSecret = request.headers.get('x-webhook-secret')
     const bodySecret = String(body.secret || body.webhook_secret || '')
+    console.log('[wix-webhook] secret check — header:', headerSecret, 'body:', bodySecret)
     if (headerSecret !== secret && bodySecret !== secret) {
+      console.log('[wix-webhook] REJECTED: secret mismatch')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
   }
 
   const fields = extractFields(body)
+  console.log('[wix-webhook] extracted fields keys:', Object.keys(fields))
 
   // Map Wix field labels to our database fields
   const name = get(fields, 'Company name', 'company_name', 'name')
@@ -84,6 +91,7 @@ export async function POST(request: Request) {
 
   const startup = {
     name,
+    sector_raw: rawSector || null,
     one_liner: get(
       fields,
       'Brief company description (max 300 characters)',
