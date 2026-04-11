@@ -64,13 +64,21 @@ export async function POST(request: Request) {
 
   await logWebhook(body, 'received')
 
-  // Secret check temporarily disabled for debugging
-  // TODO: re-enable once field mapping is confirmed working
+  // Verify webhook secret
+  const secret = process.env.WEBHOOK_SECRET
+  if (secret) {
+    const headerSecret = request.headers.get('x-webhook-secret')
+    const bodySecret = String(body.secret || body.webhook_secret || '')
+    if (headerSecret !== secret && bodySecret !== secret) {
+      await logWebhook(body, 'rejected_secret')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
 
   const fields = extractFields(body)
 
   // Map Wix field labels to our database fields
-  const name = get(fields, 'Company name', 'company_name', 'name')
+  const name = get(fields, 'Company name', 'company_name', 'name', 'Name')
   if (!name) {
     await logWebhook(body, 'error_no_name', `fields keys: ${Object.keys(fields).join(', ')}`)
     return NextResponse.json({ error: 'Company name is required' }, { status: 400 })
