@@ -9,6 +9,7 @@ function mapSector(raw: string): Sector {
   if (s.includes('food') || s.includes('beverage') || s.includes('agri') || s.includes('nutrition') || s.includes('restaurant')) return 'Food'
   if (s.includes('retail') || s.includes('fashion') || s.includes('ecommerce') || s.includes('e-commerce') || s.includes('consumer')) return 'Retail'
   return 'General'
+  // Note: sectors like Fintech, SaaS, etc. fall under General — sector_raw preserves the original value
 }
 
 // Extract fields from various Wix webhook payload formats
@@ -158,6 +159,20 @@ export async function POST(request: Request) {
   }
 
   const adminClient = createAdminClient()
+
+  // Prevent duplicates: skip if this submission was already processed
+  if (startup.wix_submission_id) {
+    const { data: existing } = await adminClient
+      .from('startups')
+      .select('id')
+      .eq('wix_submission_id', startup.wix_submission_id)
+      .maybeSingle()
+    if (existing) {
+      await logWebhook(body, 'skipped_duplicate:' + existing.id)
+      return NextResponse.json({ success: true, startup_id: existing.id, duplicate: true }, { status: 200 })
+    }
+  }
+
   const { data, error } = await adminClient
     .from('startups')
     .insert(startup)
