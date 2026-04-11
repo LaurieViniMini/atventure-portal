@@ -13,25 +13,48 @@ function mapSector(raw: string): Sector {
 
 // Extract fields from various Wix webhook payload formats
 function extractFields(body: Record<string, unknown>): Record<string, string> {
-  // Format 1: { submissions: { "Field label": "value" } }
+  // Helper: convert submissions array [{label, value}] to {label: value}
+  function submissionsArrayToMap(arr: unknown[]): Record<string, string> {
+    const map: Record<string, string> = {}
+    for (const item of arr) {
+      const entry = item as { label?: string; value?: unknown }
+      if (entry.label) map[entry.label] = String(entry.value ?? '')
+    }
+    return map
+  }
+
+  // Format 1: Wix Velo — { _payload: { submissions: [{label, value}] } }
+  if (body._payload && typeof body._payload === 'object') {
+    const p = body._payload as Record<string, unknown>
+    if (Array.isArray(p.submissions)) {
+      return submissionsArrayToMap(p.submissions)
+    }
+  }
+
+  // Format 2: { submissions: [{label, value}] } (array)
+  if (Array.isArray(body.submissions)) {
+    return submissionsArrayToMap(body.submissions)
+  }
+
+  // Format 3: { submissions: { "Field label": "value" } } (object)
   if (body.submissions && typeof body.submissions === 'object') {
     return body.submissions as Record<string, string>
   }
-  // Format 2: { data: { submissions: { ... } } }
+
+  // Format 4: { data: { submissions: { ... } } }
   if (body.data && typeof body.data === 'object') {
     const data = body.data as Record<string, unknown>
-    if (data.submissions && typeof data.submissions === 'object') {
-      return data.submissions as Record<string, string>
-    }
-    if (data.fields && typeof data.fields === 'object') {
-      return data.fields as Record<string, string>
-    }
+    if (Array.isArray(data.submissions)) return submissionsArrayToMap(data.submissions)
+    if (data.submissions && typeof data.submissions === 'object') return data.submissions as Record<string, string>
+    if (data.fields && typeof data.fields === 'object') return data.fields as Record<string, string>
   }
-  // Format 3: { fields: { ... } }
+
+  // Format 5: { fields: { ... } }
   if (body.fields && typeof body.fields === 'object') {
     return body.fields as Record<string, string>
   }
-  // Format 4: flat body — treat entire body as fields
+
+  // Format 6: flat body
   return body as Record<string, string>
 }
 
@@ -128,7 +151,10 @@ export async function POST(request: Request) {
     round_type:       get(fields, 'Type of round (equity, convertible, SAFE, other)', 'Type of round', 'round_type'),
     impact:           get(fields, 'How is your company contributing to a more inclusive, diverse, or sustainable world?', 'impact'),
     how_heard:        get(fields, 'How did you hear about AtVenture?', 'how_heard'),
-    wix_submission_id: String(body.submissionId || body.id || ''),
+    wix_submission_id: String(
+      body.submissionId || body.id ||
+      (body._payload && typeof body._payload === 'object' ? (body._payload as Record<string, unknown>).submissionId : '') || ''
+    ),
   }
 
   const adminClient = createAdminClient()
