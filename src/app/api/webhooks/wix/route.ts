@@ -42,27 +42,37 @@ function get(fields: Record<string, string>, ...keys: string[]): string {
   return ''
 }
 
+async function logWebhook(body: unknown, result: string, error?: string) {
+  try {
+    const adminClient = createAdminClient()
+    await adminClient.from('webhook_logs').insert({ body, result, error: error ?? null })
+  } catch {
+    // ignore log failures
+  }
+}
+
 export async function POST(request: Request) {
   let body: Record<string, unknown>
+  let rawText = ''
   try {
-    body = await request.json()
+    rawText = await request.text()
+    body = JSON.parse(rawText)
   } catch {
+    await logWebhook({ rawText }, 'invalid_json')
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  // Debug: log full payload so we can inspect in Vercel logs
-  console.log('[wix-webhook] raw body keys:', Object.keys(body))
-  console.log('[wix-webhook] raw body:', JSON.stringify(body).slice(0, 2000))
+  await logWebhook(body, 'received')
 
   // Secret check temporarily disabled for debugging
   // TODO: re-enable once field mapping is confirmed working
 
   const fields = extractFields(body)
-  console.log('[wix-webhook] extracted fields keys:', Object.keys(fields))
 
   // Map Wix field labels to our database fields
   const name = get(fields, 'Company name', 'company_name', 'name')
   if (!name) {
+    await logWebhook(body, 'error_no_name', `fields keys: ${Object.keys(fields).join(', ')}`)
     return NextResponse.json({ error: 'Company name is required' }, { status: 400 })
   }
 
@@ -121,10 +131,10 @@ export async function POST(request: Request) {
     .single()
 
   if (error) {
-    console.error('Wix webhook DB error:', error)
+    await logWebhook(body, 'db_error', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  console.log('New startup from Wix:', data.id, data.name)
+  await logWebhook(body, 'inserted:' + data.id, null)
   return NextResponse.json({ success: true, startup_id: data.id }, { status: 201 })
 }

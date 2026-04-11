@@ -1,26 +1,28 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
-// Simple debug endpoint — shows recent webhook activity
-// Visit: /api/admin/wix-debug
 export async function GET() {
   const adminClient = createAdminClient()
 
-  // Check recent startups inserted in the last 48 hours
   const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-  const { data: recent, error } = await adminClient
-    .from('startups')
-    .select('id, name, sector, status, wix_submission_id, created_at')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  const [{ data: logs, error: logsError }, { data: startups, error: startupsError }] =
+    await Promise.all([
+      adminClient
+        .from('webhook_logs')
+        .select('id, received_at, result, error, body')
+        .gte('received_at', since)
+        .order('received_at', { ascending: false })
+        .limit(20),
+      adminClient
+        .from('startups')
+        .select('id, name, sector, status, wix_submission_id, created_at')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false }),
+    ])
 
   return NextResponse.json({
-    info: 'Startups inserted in the last 48h via webhook',
-    count: recent?.length ?? 0,
-    startups: recent,
+    webhook_logs: logsError ? { error: logsError.message } : logs,
+    recent_startups: startupsError ? { error: startupsError.message } : startups,
   })
 }
