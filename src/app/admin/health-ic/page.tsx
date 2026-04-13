@@ -65,6 +65,30 @@ export default async function HealthICPage() {
   const total = rows.length
   const reviewed = rows.filter(r => r.reviewCount > 0).length
 
+  const STAGES = [
+    { status: 'pending_review',        label: 'Pending Review' },
+    { status: 'pre_screening',         label: 'Pre-Screen' },
+    { status: 'to_review_sector_ic',   label: 'Sector IC' },
+    { status: 'to_review_general_ic',  label: 'General IC' },
+    { status: 'ok_for_pitching',       label: 'Pitching' },
+    { status: 'in_dd',                 label: 'Due Diligence' },
+    { status: 'invested',              label: 'Geïnvesteerd' },
+    { status: 'rejected',              label: 'Afgewezen' },
+  ] as const
+
+  const stageCounts = STAGES.map(({ status, label }) => ({
+    label,
+    status,
+    count: (startups ?? []).filter(s => s.status === status).length,
+  })).filter(s => s.count > 0)
+
+  const yesCount    = rows.filter(r => r.overallRec === 'YES').length
+  const maybeCount  = rows.filter(r => r.overallRec === 'MAYBE').length
+  const noCount     = rows.filter(r => r.overallRec === 'NO').length
+  const avgAll      = rows.filter(r => r.avgScore != null).length > 0
+    ? rows.reduce((s, r) => s + (r.avgScore ?? 0), 0) / rows.filter(r => r.avgScore != null).length
+    : null
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-brand-dark shadow-md">
@@ -90,10 +114,51 @@ export default async function HealthICPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Health IC — Overzicht</h1>
-          <p className="text-gray-500 mt-1">
-            {total} proposities in de Health pipeline
-          </p>
+          <p className="text-gray-500 mt-1">{total} proposities in de Health pipeline</p>
         </div>
+
+        {/* Dashboard */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="card py-3 px-4 text-center">
+            <p className="text-3xl font-bold text-gray-900">{total}</p>
+            <p className="text-xs text-gray-400 mt-1">Totaal</p>
+          </div>
+          <div className="card py-3 px-4 text-center">
+            <p className="text-3xl font-bold text-gray-900">{reviewed}</p>
+            <p className="text-xs text-gray-400 mt-1">Beoordeeld</p>
+          </div>
+          <div className="card py-3 px-4 text-center">
+            <p className="text-3xl font-bold text-gray-900">
+              {avgAll != null ? avgAll.toFixed(2) : '—'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Gem. score /5</p>
+          </div>
+          <div className="card py-3 px-4 text-center">
+            <p className="text-2xl font-bold">
+              <span className="text-green-600">{yesCount}</span>
+              <span className="text-gray-300 text-lg"> / </span>
+              <span className="text-amber-500">{maybeCount}</span>
+              <span className="text-gray-300 text-lg"> / </span>
+              <span className="text-red-500">{noCount}</span>
+            </p>
+            <p className="text-xs text-gray-400 mt-1">YES / MAYBE / NO</p>
+          </div>
+        </div>
+
+        {/* Pipeline status breakdown */}
+        {stageCounts.length > 0 && (
+          <div className="card p-0 overflow-hidden mb-6">
+            <div className="flex divide-x divide-gray-100">
+              {stageCounts.map(({ label, status, count }) => (
+                <div key={status} className="flex-1 py-3 px-4 text-center min-w-0">
+                  <p className="text-2xl font-bold text-gray-900">{count}</p>
+                  <p className="text-xs text-gray-400 mt-0.5 truncate">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
 
         {rows.length === 0 ? (
           <div className="card text-center py-12 text-gray-400">
