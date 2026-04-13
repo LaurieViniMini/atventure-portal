@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
 const VALID_STATUSES = [
   'pre_screening', 'to_review_sector_ic', 'to_review_general_ic',
@@ -52,6 +53,14 @@ export async function PATCH(
   }
 
   const adminClient = createAdminClient()
+
+  // Fetch current status before update (to detect rejected transition)
+  const { data: before } = await adminClient
+    .from('startups')
+    .select('status, contact_email, contact_name, name')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await adminClient
     .from('startups')
     .update(update)
@@ -60,6 +69,47 @@ export async function PATCH(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Send rejection email if status just changed to 'rejected'
+  if (
+    update.status === 'rejected' &&
+    before?.status !== 'rejected' &&
+    before?.contact_email
+  ) {
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'noreply@atventure.vc'
+      const startupName = before.name ?? data.name ?? 'uw startup'
+      const contactName = before.contact_name?.split(' ')[0] || 'there'
+
+      await resend.emails.send({
+        from: fromEmail,
+        to: before.contact_email,
+        subject: `Update on your AtVenture application — ${startupName}`,
+        html: `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+  <div style="background: #1a1a2e; padding: 24px 32px; border-radius: 8px 8px 0 0;">
+    <span style="color: #fff; font-size: 20px; font-weight: bold;">AtVenture</span>
+  </div>
+  <div style="background: #fff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+    <p>Dear ${contactName},</p>
+    <p>Thank you for submitting <strong>${startupName}</strong> to AtVenture and for the time you invested in sharing your story with us.</p>
+    <p>After careful review by our investment committee, we have decided not to proceed with your application at this time. This decision does not reflect the quality of your work — we receive many strong applications, and our focus areas and investment criteria are specific.</p>
+    <p>We genuinely appreciate the innovation and effort you are putting into building your company, and we wish you every success on your journey ahead.</p>
+    <p>If your circumstances change significantly or you raise a new round in the future, we would welcome the opportunity to reconnect.</p>
+    <p style="margin-top: 32px;">With kind regards,</p>
+    <p><strong>The AtVenture Team</strong><br/>
+    <a href="https://atventure.vc" style="color: #6366f1;">atventure.vc</a></p>
+  </div>
+</div>
+        `.trim(),
+      })
+    } catch (emailErr) {
+      // Don't fail the request if email fails — log and continue
+      console.error('Failed to send rejection email:', emailErr)
+    }
+  }
+
   return NextResponse.json({ startup: data })
 }
 

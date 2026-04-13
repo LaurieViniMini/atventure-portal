@@ -155,7 +155,7 @@ export default async function AdminDashboard() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Deal Flow</h1>
             <p className="text-gray-500 mt-0.5">
-              {startups?.length ?? 0} startups in pipeline
+              {(startups ?? []).filter(s => s.status !== 'rejected').length} startups in pipeline
             </p>
           </div>
           <AdminActions />
