@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       'Brief company description',
       'description',
       'one_liner'
-    ).slice(0, 500),
+    ),
     sector,
     pitch_deck_url: pitchDeckUrl,
     status: 'pending_review' as const,

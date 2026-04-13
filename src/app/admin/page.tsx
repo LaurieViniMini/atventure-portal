@@ -6,6 +6,7 @@ import StatusBadge from '@/components/StatusBadge'
 import RecommendationBadge from '@/components/RecommendationBadge'
 import SectorBadge from '@/components/SectorBadge'
 import AdminActions from './AdminActions'
+import EditStartupButton from './EditStartupButton'
 import type { Startup, Review, Recommendation } from '@/lib/types'
 
 function daysSince(dateStr: string) {
@@ -271,12 +272,15 @@ export default async function AdminDashboard() {
                       <RecommendationBadge recommendation={overallRec} />
                     </td>
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/startups/${startup.id}`}
-                        className="text-primary hover:text-primary-dark font-medium transition-colors"
-                      >
-                        View →
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <EditStartupButton startup={startup} />
+                        <Link
+                          href={`/admin/startups/${startup.id}`}
+                          className="text-primary hover:text-primary-dark font-medium transition-colors"
+                        >
+                          View →
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 )

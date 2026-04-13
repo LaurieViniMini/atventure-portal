@@ -24,19 +24,28 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { status, sector, sector_raw } = body
 
   const update: Record<string, unknown> = {}
 
-  if (status !== undefined) {
-    if (!VALID_STATUSES.includes(status)) {
+  if (body.status !== undefined) {
+    if (!VALID_STATUSES.includes(body.status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
-    update.status = status
+    update.status = body.status
   }
 
-  if (sector !== undefined) update.sector = sector
-  if (sector_raw !== undefined) update.sector_raw = sector_raw
+  // All editable fields
+  const fields = [
+    'name', 'one_liner', 'sector', 'sector_raw', 'pitch_deck_url',
+    'website', 'location', 'founding_date',
+    'contact_name', 'contact_email', 'contact_phone',
+    'business_model_description', 'stage',
+    'funding_raised', 'mrr', 'funding_target', 'amount_committed', 'round_type',
+    'traction', 'impact', 'how_heard',
+  ]
+  for (const field of fields) {
+    if (body[field] !== undefined) update[field] = body[field] || null
+  }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })

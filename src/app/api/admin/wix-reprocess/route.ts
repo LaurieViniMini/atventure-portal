@@ -80,7 +80,7 @@ export async function POST() {
     const startup = {
       name,
       sector_raw: rawSector || null,
-      one_liner: get(fields, 'Brief company description (max 300 characters)', 'Brief company description').slice(0, 500),
+      one_liner: get(fields, 'Brief company description (max 300 characters)', 'Brief company description'),
       sector: mapSector(rawSector),
       pitch_deck_url: get(fields, 'Or share a link to your pitchdeck', 'Pitch deck', 'Please share your pitchdeck'),
       status: 'pending_review' as const,
