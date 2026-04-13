@@ -123,7 +123,7 @@ export default async function StartupDetailPage({ params }: Props) {
             <div className="flex-1">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl font-bold text-gray-900">{startup.name}</h1>
-                <SectorBadge sector={startup.sector} />
+                <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
                 <StatusBadge status={startup.status} />
                 {overallRec && <RecommendationBadge recommendation={overallRec} />}
               </div>
@@ -179,13 +179,19 @@ export default async function StartupDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Status updater */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-900">Update Status</h2>
-            <DeleteButton startupId={startup.id} />
+        {/* Sector + Status updater */}
+        <div className="card space-y-4">
+          <div>
+            <h2 className="font-semibold text-gray-900 mb-3">Sector</h2>
+            <SectorUpdater startupId={startup.id} currentSector={startup.sector} currentSectorRaw={startup.sector_raw} />
           </div>
-          <StatusUpdater startupId={startup.id} currentStatus={startup.status} />
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-gray-900">Status</h2>
+              <DeleteButton startupId={startup.id} />
+            </div>
+            <StatusUpdater startupId={startup.id} currentStatus={startup.status} />
+          </div>
         </div>
 
         {/* Reviewer management */}

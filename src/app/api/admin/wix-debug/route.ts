@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   const adminClient = createAdminClient()
 
-  const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
   const [{ data: logs, error: logsError }, { data: startups, error: startupsError }] =
     await Promise.all([

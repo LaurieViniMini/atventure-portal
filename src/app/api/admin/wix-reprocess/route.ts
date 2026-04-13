@@ -32,13 +32,13 @@ function extractFromPayload(payload: Record<string, unknown>): Record<string, st
 // Re-processes all failed webhook_log entries from the last 48h and inserts missing startups
 export async function POST() {
   const adminClient = createAdminClient()
-  const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Get all failed logs (error_no_name) from last 48h
+  // Get all failed/rejected logs from last 7 days
   const { data: logs, error: logsError } = await adminClient
     .from('webhook_logs')
     .select('id, body, received_at')
-    .like('result', 'error_%')
+    .or('result.like.error_%,result.eq.rejected_secret')
     .gte('received_at', since)
 
   if (logsError) return NextResponse.json({ error: logsError.message }, { status: 500 })

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ScoreInput from './ScoreInput'
 import RecommendationBadge from './RecommendationBadge'
+import SectorBadge from './SectorBadge'
 import { GATING_CRITERIA, NO_HARM_CRITERION, SCORE_CRITERIA, THRESHOLDS } from '@/lib/criteria'
 import {
   calculateWeightedTotal,
@@ -237,38 +238,6 @@ export default function ReviewForm({ startup, existingReview, icMemberId, isPreS
       {/* ── STAGE 2: SCORING ── */}
       {!hardStop && (
         <>
-          {/* Live score preview */}
-          <div className="card border-l-4 border-l-primary">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">Weighted Score</p>
-                <p className="text-4xl font-bold text-gray-900 mt-0.5">
-                  {pct.toFixed(0)}
-                  <span className="text-lg text-gray-400 font-normal">%</span>
-                  <span className="text-sm text-gray-400 font-normal ml-2">({weightedTotal.toFixed(2)}/5)</span>
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-400 mb-1">Suggested recommendation</p>
-                <RecommendationBadge recommendation={suggestedRec} />
-              </div>
-            </div>
-            <div className="mt-4">
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${scoreColor}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>0%</span>
-                <span className="text-red-400">50% (No)</span>
-                <span className="text-amber-500">75% (Maybe)</span>
-                <span>100%</span>
-              </div>
-            </div>
-          </div>
-
           {/* Scoring criteria */}
           <div className="card space-y-6">
             <h2 className="font-bold text-gray-900 text-lg">Stage 2 — Scoring</h2>
@@ -448,19 +417,32 @@ export default function ReviewForm({ startup, existingReview, icMemberId, isPreS
 }
 
 function StartupHeader({ startup }: { startup: Startup }) {
+  const shortDetails: { label: string; value: string | null | undefined }[] = [
+    { label: 'Location',         value: startup.location },
+    { label: 'Founded',          value: startup.founding_date },
+    { label: 'Stage',            value: startup.stage },
+    { label: 'Round type',       value: startup.round_type },
+    { label: 'Funding raised',   value: startup.funding_raised },
+    { label: 'Funding target',   value: startup.funding_target },
+    { label: 'Amount committed', value: startup.amount_committed },
+    { label: 'MRR',              value: startup.mrr },
+  ].filter((d) => d.value)
+
+  const longDetails: { label: string; value: string | null | undefined }[] = [
+    { label: 'Business model',   value: startup.business_model_description },
+    { label: 'Traction',         value: startup.traction },
+    { label: 'Impact',           value: startup.impact },
+  ].filter((d) => d.value)
+
   return (
-    <div className="card">
+    <div className="card space-y-4">
+      {/* Name + sector + pitch deck */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{startup.name}</h1>
           <p className="text-gray-500 mt-1">{startup.one_liner}</p>
-          <div className="flex gap-2 mt-3 flex-wrap">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              startup.sector === 'Health'  ? 'bg-teal-100 text-teal-700' :
-              startup.sector === 'Food'    ? 'bg-green-100 text-green-700' :
-              startup.sector === 'General' ? 'bg-blue-100 text-blue-700' :
-                                             'bg-orange-100 text-orange-700'
-            }`}>{startup.sector}</span>
+          <div className="mt-2">
+            <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
           </div>
         </div>
         {startup.pitch_deck_url && (
@@ -477,6 +459,38 @@ function StartupHeader({ startup }: { startup: Startup }) {
           </a>
         )}
       </div>
+
+      {/* Website */}
+      {startup.website && (
+        <a
+          href={startup.website}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-primary hover:underline truncate block"
+        >
+          {startup.website}
+        </a>
+      )}
+
+      {/* Key figures grid */}
+      {shortDetails.length > 0 && (
+        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {shortDetails.map((d) => (
+            <div key={d.label} className="bg-gray-50 rounded-lg px-3 py-2">
+              <dt className="text-xs text-gray-400 font-medium">{d.label}</dt>
+              <dd className="text-sm text-gray-800 font-semibold mt-0.5 break-words">{d.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {/* Long-form details */}
+      {longDetails.map((d) => (
+        <div key={d.label}>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">{d.label}</p>
+          <p className="text-sm text-gray-700 whitespace-pre-line">{d.value}</p>
+        </div>
+      ))}
     </div>
   )
 }

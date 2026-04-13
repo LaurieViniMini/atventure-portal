@@ -5,6 +5,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import SectorBadge from '@/components/SectorBadge'
 import type { Startup, Review, IcMember } from '@/lib/types'
 
+function daysSince(dateStr: string) {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000)
+}
+
 export const dynamic = 'force-dynamic'
 
 export default async function ReviewDashboard() {
@@ -94,6 +98,13 @@ export default async function ReviewDashboard() {
 
   const reviewMap = new Map(reviews?.map((r) => [r.startup_id, r]))
 
+  const submittedCount = startups.filter((s) => reviewMap.get(s.id)?.submitted_at).length
+  const draftCount = startups.filter((s) => {
+    const r = reviewMap.get(s.id)
+    return r && !r.submitted_at && !r.passed
+  }).length
+  const notStartedCount = startups.filter((s) => !reviewMap.get(s.id)).length
+
   async function signOut() {
     'use server'
     const supabase = await createClient()
@@ -142,6 +153,23 @@ export default async function ReviewDashboard() {
           </p>
         </div>
 
+        {startups.length > 0 && (
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="card py-3 px-4 text-center">
+              <p className="text-2xl font-bold text-green-600">{submittedCount}</p>
+              <p className="text-xs text-gray-400 mt-0.5">Submitted</p>
+            </div>
+            <div className="card py-3 px-4 text-center">
+              <p className="text-2xl font-bold text-amber-500">{draftCount}</p>
+              <p className="text-xs text-gray-400 mt-0.5">Draft</p>
+            </div>
+            <div className="card py-3 px-4 text-center">
+              <p className="text-2xl font-bold text-gray-400">{notStartedCount}</p>
+              <p className="text-xs text-gray-400 mt-0.5">Not started</p>
+            </div>
+          </div>
+        )}
+
         {startups.length === 0 ? (
           <div className="card text-center py-12 text-gray-500">
             No startups assigned yet. Check back soon.
@@ -177,13 +205,21 @@ export default async function ReviewDashboard() {
                       <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
                         {startup.name}
                       </h3>
-                      <SectorBadge sector={startup.sector} />
+                      <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
                     </div>
                     <p className="text-sm text-gray-500 mt-1 truncate">
                       {startup.one_liner}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
+                    {(() => {
+                      const d = daysSince(startup.created_at)
+                      return (
+                        <span className={`text-xs font-medium ${d > 30 ? 'text-red-400' : d > 14 ? 'text-amber-500' : 'text-gray-400'}`}>
+                          {d}d
+                        </span>
+                      )
+                    })()}
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
                     >

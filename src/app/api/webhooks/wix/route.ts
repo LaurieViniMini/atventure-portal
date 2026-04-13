@@ -160,7 +160,7 @@ export async function POST(request: Request) {
 
   const adminClient = createAdminClient()
 
-  // Prevent duplicates: skip if this submission was already processed
+  // Prevent duplicates: check by wix_submission_id (preferred) or by name (fallback for retries without ID)
   if (startup.wix_submission_id) {
     const { data: existing } = await adminClient
       .from('startups')
@@ -169,6 +169,19 @@ export async function POST(request: Request) {
       .maybeSingle()
     if (existing) {
       await logWebhook(body, 'skipped_duplicate:' + existing.id)
+      return NextResponse.json({ success: true, startup_id: existing.id, duplicate: true }, { status: 200 })
+    }
+  } else {
+    // No submission ID — deduplicate by name (case-insensitive) within the last 24h
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { data: existing } = await adminClient
+      .from('startups')
+      .select('id')
+      .ilike('name', startup.name)
+      .gte('created_at', since24h)
+      .maybeSingle()
+    if (existing) {
+      await logWebhook(body, 'skipped_duplicate_by_name:' + existing.id)
       return NextResponse.json({ success: true, startup_id: existing.id, duplicate: true }, { status: 200 })
     }
   }
@@ -180,6 +193,16 @@ export async function POST(request: Request) {
     .single()
 
   if (error) {
+    // Unique constraint violation = duplicate submission that slipped through the race window
+    if (error.code === '23505') {
+      const { data: existing } = await adminClient
+        .from('startups')
+        .select('id')
+        .eq('wix_submission_id', startup.wix_submission_id)
+        .maybeSingle()
+      await logWebhook(body, 'skipped_duplicate_constraint:' + (existing?.id ?? 'unknown'))
+      return NextResponse.json({ success: true, startup_id: existing?.id, duplicate: true }, { status: 200 })
+    }
     await logWebhook(body, 'db_error', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

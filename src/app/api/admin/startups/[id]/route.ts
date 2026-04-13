@@ -24,16 +24,28 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { status } = body
+  const { status, sector, sector_raw } = body
 
-  if (!status || !VALID_STATUSES.includes(status)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+  const update: Record<string, unknown> = {}
+
+  if (status !== undefined) {
+    if (!VALID_STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
+    update.status = status
+  }
+
+  if (sector !== undefined) update.sector = sector
+  if (sector_raw !== undefined) update.sector_raw = sector_raw
+
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
   const adminClient = createAdminClient()
   const { data, error } = await adminClient
     .from('startups')
-    .update({ status })
+    .update(update)
     .eq('id', id)
     .select()
     .single()

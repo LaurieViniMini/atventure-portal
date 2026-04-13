@@ -25,6 +25,7 @@ export interface Startup {
   pitch_deck_url: string
   status: StartupStatus
   created_at: string
+  sector_raw?: string | null
   // Wix form fields
   website?: string | null
   location?: string | null
