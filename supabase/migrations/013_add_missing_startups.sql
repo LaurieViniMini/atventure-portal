@@ -1,0 +1,63 @@
+INSERT INTO startups (
+  name, one_liner, sector, sector_raw, pitch_deck_url, status,
+  website, location, founding_date,
+  contact_name, contact_email, contact_phone,
+  business_model_description, stage,
+  funding_raised, mrr, funding_target, amount_committed, round_type,
+  traction, impact, how_heard
+) VALUES (
+  'Domeject',
+  'Swedish medtech company developing the Redosa hybrid syringe — the only syringe that reduces plastic waste by 85% through a reusable design where only 15% is disposable.',
+  'Health',
+  'Health / Wellbeing',
+  'https://00cfd03d-7ea7-4892-8b35-0bafc123bfee.usrfiles.com/ugd/a2d839_32dff7cb1db7495c94aaae66cfd6cafb.pdf',
+  'pending_review',
+  'https://domeject.se',
+  'Sweden',
+  '2024-04-02',
+  'Tom Liber',
+  'tom.liber@domeject.se',
+  '+46 70 602 10 98',
+  'B2B (Business-to-Business)',
+  'Seed',
+  '1',
+  '0',
+  '1000000',
+  '100',
+  'seed',
+  'Initial market research shows healthcare providers must comply with plastic waste policies. Domeject''s Redosa syringe reduces plastic waste of disposable syringes by 85% through a reusable design — 1 syringe replaces up to 8 conventional disposable syringes, saving costs and ideal for military use.',
+  'The product is a green health tech product which saves the customer costs and reduces plastic waste by 85%.',
+  'Referral'
+);
+
+INSERT INTO startups (
+  name, one_liner, sector, sector_raw, pitch_deck_url, status,
+  website, location, founding_date,
+  contact_name, contact_email, contact_phone,
+  business_model_description, stage,
+  funding_raised, mrr, funding_target, amount_committed, round_type,
+  traction, impact, how_heard
+) VALUES (
+  'Tudy''s Kitchen',
+  'Impact-led premium ice cream brand creating culturally inspired flavors with proven retail traction in 1,000+ Albert Heijn stores across the Netherlands and Belgium.',
+  'Food',
+  'Food / Agri / Sustainability',
+  'https://00cfd03d-7ea7-4892-8b35-0bafc123bfee.usrfiles.com/ugd/904bd2_0bf0211b7984431aa6df86994f1e755a.pdf',
+  'pending_review',
+  'https://www.tudyskitchen.com',
+  'Amsterdam',
+  '2021-08-01',
+  'Nekeia Boone',
+  'nekeia@tudyskitchen.com',
+  '+31 6 48232080',
+  'B2B2C (Business-to-Business-to-Consumer)',
+  'Seed',
+  '155000',
+  '23500',
+  '625000',
+  '0',
+  'CLA, SAFE',
+  'Distribution in 1,000+ Albert Heijn stores across NL and BE, ~€4K weekly sell-through (peak €12K). ~€268K revenue in 2025 with year-on-year loss reduction. €60K Disney+ collaboration serving 4,200+ consumers. Growing buyer interest across multiple EU markets.',
+  'Culturally rooted flavors bringing underrepresented stories into everyday consumption. Partners with a carbon-negative production partner. Founded The Grid: BCN — a platform connecting Barcelona''s African diaspora with visibility, resources, and opportunity.',
+  'Referral'
+);

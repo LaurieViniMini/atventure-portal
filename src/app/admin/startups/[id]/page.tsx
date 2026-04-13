@@ -12,6 +12,7 @@ import SendInvitesButton from './SendInvitesButton'
 import ReviewerManager from './ReviewerManager'
 import ReviewDetail from './ReviewDetail'
 import DeleteButton from './DeleteButton'
+import AiAssessButton from './AiAssessButton'
 import type { Startup, IcMember, ReviewWithMember, Recommendation } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -193,6 +194,70 @@ export default async function StartupDetailPage({ params }: Props) {
             </div>
             <StatusUpdater startupId={startup.id} currentStatus={startup.status} />
           </div>
+        </div>
+
+        {/* AI pre-screening assessment */}
+        <div className="card space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                <svg className="w-3.5 h-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.416a1 1 0 01-.73.321H9.56a1 1 0 01-.73-.321l-.347-.416z" />
+                </svg>
+              </div>
+              <h2 className="font-semibold text-gray-900">AI Pre-Screening</h2>
+            </div>
+            <AiAssessButton startupId={startup.id} />
+          </div>
+
+          {startup.ai_gate_scores ? (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                  startup.ai_gate_scores.recommendation === 'proceed' ? 'bg-green-100 text-green-700' :
+                  startup.ai_gate_scores.recommendation === 'discuss'  ? 'bg-amber-100 text-amber-700' :
+                                                                          'bg-red-100 text-red-600'
+                }`}>
+                  {startup.ai_gate_scores.recommendation === 'proceed' ? 'Doorgaan' :
+                   startup.ai_gate_scores.recommendation === 'discuss'  ? 'Bespreken' : 'Afwijzen'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {([
+                  { key: 'ten_x',     label: '10x' },
+                  { key: 'eu_based',  label: 'EU' },
+                  { key: 'stage',     label: 'Stage' },
+                  { key: 'no_harm',   label: 'No Harm' },
+                  { key: 'must_have', label: 'Must-Have' },
+                ] as const).map(({ key, label }) => {
+                  const gate = (startup.ai_gate_scores as NonNullable<typeof startup.ai_gate_scores>)[key]
+                  return (
+                    <div key={key} className={`rounded-lg p-3 text-center ${
+                      gate.score === 1  ? 'bg-green-50 border border-green-100' :
+                      gate.score === -1 ? 'bg-red-50 border border-red-100' :
+                                          'bg-gray-50 border border-gray-100'
+                    }`}>
+                      <p className={`text-lg font-bold ${
+                        gate.score === 1 ? 'text-green-600' : gate.score === -1 ? 'text-red-500' : 'text-gray-400'
+                      }`}>
+                        {gate.score === 1 ? '✓' : gate.score === -1 ? '✗' : '—'}
+                      </p>
+                      <p className="text-xs font-semibold text-gray-700 mt-0.5">{label}</p>
+                      <p className="text-xs text-gray-500 mt-1 leading-tight">{gate.reason}</p>
+                    </div>
+                  )
+                })}
+              </div>
+              {startup.ai_gate_scores.summary && (
+                <div className="bg-violet-50 rounded-lg p-4">
+                  <p className="text-xs text-violet-400 font-medium uppercase tracking-wide mb-1">AI samenvatting</p>
+                  <p className="text-sm text-gray-700">{startup.ai_gate_scores.summary}</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-gray-400">Nog geen AI-beoordeling. Klik op de knop om er een te genereren.</p>
+          )}
         </div>
 
         {/* Reviewer management */}
