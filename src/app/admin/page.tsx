@@ -32,16 +32,18 @@ export default async function AdminDashboard() {
 
   const adminClient = createAdminClient()
 
-  const { data: startups = [] } = await adminClient
-    .from('startups')
-    .select('*')
-    .order('created_at', { ascending: false }) as { data: Startup[] | null }
-
-  const { data: reviews = [] } = await adminClient
-    .from('reviews')
-    .select('*') as { data: Review[] | null }
+  const [
+    { data: startups = [] },
+    { data: reviews = [] },
+    { data: assignments = [] },
+  ] = await Promise.all([
+    adminClient.from('startups').select('*').order('created_at', { ascending: false }) as unknown as Promise<{ data: Startup[] | null }>,
+    adminClient.from('reviews').select('*') as unknown as Promise<{ data: Review[] | null }>,
+    adminClient.from('startup_reviewers').select('startup_id, ic_member_id, ic_members(id, name)') as unknown as Promise<{ data: { startup_id: string; ic_member_id: string; ic_members: { id: string; name: string } }[] | null }>,
+  ])
 
   // Aggregate stats per startup
+  type ReviewerStatus = { name: string; submitted: boolean; draft: boolean; passed: boolean }
   type StartupStats = {
     startup: Startup
     reviewCount: number
@@ -50,6 +52,7 @@ export default async function AdminDashboard() {
     maybeCnt: number
     noCnt: number
     overallRec: Recommendation | null
+    reviewers: ReviewerStatus[]
   }
 
   const stats: StartupStats[] = (startups ?? []).map((startup) => {
@@ -72,7 +75,18 @@ export default async function AdminDashboard() {
       else overallRec = 'NO'
     }
 
-    return { startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec }
+    const assigned = (assignments ?? []).filter(a => a.startup_id === startup.id)
+    const reviewers: ReviewerStatus[] = assigned.map(a => {
+      const r = (reviews ?? []).find(r => r.startup_id === startup.id && r.ic_member_id === a.ic_member_id)
+      return {
+        name: a.ic_members?.name ?? '?',
+        submitted: Boolean(r?.submitted_at),
+        draft: Boolean(r && !r.submitted_at && !r.passed),
+        passed: Boolean(r?.passed),
+      }
+    })
+
+    return { startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec, reviewers }
   })
 
   const pipeline = PIPELINE_STAGES.map(({ status, label }) => {
@@ -118,6 +132,9 @@ export default async function AdminDashboard() {
             </span>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/admin/health-ic" className="text-white/60 hover:text-white text-sm transition-colors">
+              Health IC
+            </Link>
             <Link href="/admin/ic-members" className="text-white/60 hover:text-white text-sm transition-colors">
               IC Members
             </Link>
@@ -211,6 +228,9 @@ export default async function AdminDashboard() {
                 <th className="text-center px-4 py-3 font-medium text-gray-600">
                   Overall
                 </th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">
+                  Reviewers
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -224,6 +244,7 @@ export default async function AdminDashboard() {
                   maybeCnt,
                   noCnt,
                   overallRec,
+                  reviewers,
                 }) => (
                   <tr
                     key={startup.id}
@@ -270,6 +291,28 @@ export default async function AdminDashboard() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <RecommendationBadge recommendation={overallRec} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {reviewers.length === 0 ? (
+                        <span className="text-xs text-gray-300">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {reviewers.map(r => (
+                            <span
+                              key={r.name}
+                              title={`${r.name} — ${r.submitted ? 'Submitted' : r.draft ? 'Draft' : r.passed ? 'Passed' : 'Not started'}`}
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                r.submitted ? 'bg-green-100 text-green-700' :
+                                r.draft     ? 'bg-amber-100 text-amber-700' :
+                                r.passed    ? 'bg-gray-100 text-gray-400 line-through' :
+                                              'bg-gray-100 text-gray-500'
+                              }`}
+                            >
+                              {r.name.split(' ')[0]}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
