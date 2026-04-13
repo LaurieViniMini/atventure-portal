@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ReviewForm from '@/components/ReviewForm'
-import type { Startup, Review, IcMember } from '@/lib/types'
+import type { Startup, Review, IcMember, ReviewWithMember } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,6 +56,24 @@ export default async function ReviewPage({ params }: Props) {
     .eq('ic_member_id', member.id)
     .maybeSingle<Review>()
 
+  // Fetch sector IC reviews for General IC reviewers reviewing a sector startup
+  // so they can see the Health/Retail/Food IC's assessment before reviewing
+  let sectorIcReviews: ReviewWithMember[] = []
+  const isGeneralReviewer = member.ic_type === 'General' || member.ic_type === 'All'
+  const hasSectorIc = startup.sector !== 'General'
+  if (isGeneralReviewer && hasSectorIc) {
+    const { data: sectorReviews } = await adminClient
+      .from('reviews')
+      .select('*, ic_members(*)')
+      .eq('startup_id', startup.id)
+      .not('submitted_at', 'is', null) as { data: ReviewWithMember[] | null }
+
+    // Only show reviews from the sector IC members (not General IC)
+    sectorIcReviews = (sectorReviews ?? []).filter(
+      (r) => r.ic_members?.ic_type === startup.sector || r.ic_members?.ic_type === 'PreScreen'
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-brand-dark shadow-md">
@@ -82,6 +100,7 @@ export default async function ReviewPage({ params }: Props) {
           existingReview={existingReview}
           icMemberId={member.id}
           isPreScreen={isPreScreen}
+          sectorIcReviews={sectorIcReviews}
         />
       </div>
     </div>

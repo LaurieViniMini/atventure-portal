@@ -13,16 +13,17 @@ import {
   DEFAULT_GATES,
   type ScoreFields,
 } from '@/lib/weighted-score'
-import type { Review, Startup, Recommendation, DiverseTeam } from '@/lib/types'
+import type { Review, Startup, Recommendation, DiverseTeam, ReviewWithMember } from '@/lib/types'
 
 interface ReviewFormProps {
   startup: Startup
   existingReview: Review | null
   icMemberId: string
   isPreScreen?: boolean
+  sectorIcReviews?: ReviewWithMember[]
 }
 
-export default function ReviewForm({ startup, existingReview, icMemberId, isPreScreen = false }: ReviewFormProps) {
+export default function ReviewForm({ startup, existingReview, icMemberId, isPreScreen = false, sectorIcReviews = [] }: ReviewFormProps) {
   const router = useRouter()
   const isSubmitted = Boolean(existingReview?.submitted_at)
   const isPassed = Boolean(existingReview?.passed)
@@ -144,6 +145,86 @@ export default function ReviewForm({ startup, existingReview, icMemberId, isPreS
   return (
     <div className="space-y-6">
       <StartupHeader startup={startup} />
+
+      {/* ── SECTOR IC SUMMARY (visible to General IC only) ── */}
+      {sectorIcReviews.length > 0 && (
+        <div className="card border-l-4 border-l-teal-400 space-y-4">
+          <div>
+            <h2 className="font-bold text-gray-900 text-base">
+              {startup.sector} IC — Review Summary
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {sectorIcReviews.length} review{sectorIcReviews.length !== 1 ? 's' : ''} submitted by the Sector IC
+            </p>
+          </div>
+
+          {/* Aggregate bar */}
+          {(() => {
+            const avg = sectorIcReviews.reduce((s, r) => s + (r.weighted_total ?? 0), 0) / sectorIcReviews.length
+            const yesCnt = sectorIcReviews.filter(r => r.recommendation === 'YES').length
+            const maybeCnt = sectorIcReviews.filter(r => r.recommendation === 'MAYBE').length
+            const noCnt = sectorIcReviews.filter(r => r.recommendation === 'NO').length
+            return (
+              <div className="flex items-center gap-4 flex-wrap bg-gray-50 rounded-lg px-4 py-3">
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">Avg score</p>
+                  <p className="text-xl font-bold text-gray-900">{avg.toFixed(2)}<span className="text-sm font-normal text-gray-400">/5</span></p>
+                </div>
+                <div className="w-px h-8 bg-gray-200" />
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">Recommendations</p>
+                  <p className="text-sm font-semibold mt-0.5">
+                    <span className="text-green-600">{yesCnt} YES</span>
+                    <span className="text-gray-300 mx-1">·</span>
+                    <span className="text-amber-600">{maybeCnt} MAYBE</span>
+                    <span className="text-gray-300 mx-1">·</span>
+                    <span className="text-red-500">{noCnt} NO</span>
+                  </p>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Per-reviewer detail */}
+          <div className="space-y-3">
+            {sectorIcReviews.map((r) => (
+              <div key={r.id} className="border border-gray-100 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="font-semibold text-sm text-gray-800">{r.ic_members?.name ?? '—'}</span>
+                  <div className="flex items-center gap-2">
+                    {r.weighted_total != null && (
+                      <span className="text-sm font-bold text-gray-700">
+                        {r.weighted_total.toFixed(2)}<span className="text-xs font-normal text-gray-400">/5</span>
+                      </span>
+                    )}
+                    {r.recommendation && (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        r.recommendation === 'YES'   ? 'bg-green-100 text-green-700' :
+                        r.recommendation === 'MAYBE' ? 'bg-amber-100 text-amber-700' :
+                                                       'bg-red-100 text-red-600'
+                      }`}>
+                        {r.recommendation}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {r.key_risks && (
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Key risks</p>
+                    <p className="text-sm text-gray-700 mt-0.5">{r.key_risks}</p>
+                  </div>
+                )}
+                {r.comments && (
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Comments</p>
+                    <p className="text-sm text-gray-700 mt-0.5">{r.comments}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── STAGE 1: GATING ── */}
       <div className="card border-l-4 border-l-amber-400">
