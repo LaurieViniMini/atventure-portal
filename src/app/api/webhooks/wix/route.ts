@@ -1,5 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
 import type { Sector } from '@/lib/types'
 
 // Map Wix sector values to our sectors
@@ -208,5 +210,113 @@ export async function POST(request: Request) {
   }
 
   await logWebhook(body, 'inserted:' + data.id)
+
+  // ── AI pre-screening ──────────────────────────────────────────────
+  // Run async after insert: AI gating assessment + set to pre_screening + invite pre-screeners
+  try {
+    const aiResult = await runAiPreScreen(data)
+    await adminClient.from('startups').update({
+      status: 'pre_screening',
+      ai_summary: aiResult.summary,
+      ai_gate_scores: aiResult,
+    }).eq('id', data.id)
+  } catch (aiErr) {
+    console.error('AI pre-screen failed:', aiErr)
+    // Still push to pre_screening even if AI fails
+    await adminClient.from('startups').update({ status: 'pre_screening' }).eq('id', data.id)
+  }
+
+  // Invite all PreScreen ic_members (e.g. Anica) and assign them as reviewers
+  try {
+    const { data: preScreeners } = await adminClient
+      .from('ic_members')
+      .select('id, email')
+      .eq('ic_type', 'PreScreen')
+
+    if (preScreeners?.length) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://atventure-portal.vercel.app'
+      const anonClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { cookies: { getAll: () => [], setAll: () => {} } }
+      )
+
+      await Promise.all(preScreeners.map(async (m) => {
+        // Assign as reviewer
+        await adminClient.from('startup_reviewers').upsert(
+          { startup_id: data.id, ic_member_id: m.id },
+          { onConflict: 'startup_id,ic_member_id', ignoreDuplicates: true }
+        )
+        // Send magic link
+        await anonClient.auth.signInWithOtp({
+          email: m.email,
+          options: { emailRedirectTo: `${siteUrl}/auth/callback`, shouldCreateUser: true },
+        })
+      }))
+    }
+  } catch (inviteErr) {
+    console.error('Pre-screener invite failed:', inviteErr)
+  }
+
   return NextResponse.json({ success: true, startup_id: data.id }, { status: 201 })
+}
+
+// ── AI gating evaluation ─────────────────────────────────────────────
+async function runAiPreScreen(startup: {
+  name: string
+  one_liner: string
+  sector: string
+  sector_raw?: string | null
+  location?: string | null
+  stage?: string | null
+  traction?: string | null
+  business_model_description?: string | null
+  impact?: string | null
+  round_type?: string | null
+  funding_target?: string | null
+}) {
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+  const prompt = `You are evaluating a startup application for AtVenture, an impact-focused early-stage venture capital fund in Europe.
+
+Evaluate this startup against our 5 gating criteria and provide a brief assessment for our pre-screeners.
+
+**Startup:**
+- Name: ${startup.name}
+- Description: ${startup.one_liner || '(not provided)'}
+- Sector: ${startup.sector_raw || startup.sector}
+- Location: ${startup.location || '(not provided)'}
+- Stage: ${startup.stage || '(not provided)'}
+- Round type: ${startup.round_type || '(not provided)'}
+- Funding target: ${startup.funding_target || '(not provided)'}
+- Traction: ${startup.traction || '(not provided)'}
+- Business model: ${startup.business_model_description || '(not provided)'}
+- Impact: ${startup.impact || '(not provided)'}
+
+**Gating Criteria — score each as 1 (clearly passes), 0 (unclear/neutral), or -1 (concern or fail):**
+1. **10x potential** — Could this startup realistically return 10x or more? Consider: market size, unique approach, scalability, defensibility.
+2. **EU-based** — Is the company headquartered in the EU or EEA? Score 1 if yes, -1 if clearly outside, 0 if unclear.
+3. **Pre-seed / Seed stage** — Is the round pre-seed or seed? Score 1 if yes, -1 if Series A or later, 0 if unclear.
+4. **No harm to people & planet** — Is the business model free from harm? Red flags: weapons, gambling, tobacco, fossil fuels, privacy exploitation, predatory practices. Score 1 if clearly no harm, -1 if concern, 0 if neutral.
+5. **Must-have** — Does the startup solve a real, urgent problem (not just a nice-to-have)? Score 1 if clearly must-have, 0 if borderline, -1 if nice-to-have only.
+
+Respond ONLY with valid JSON — no markdown, no explanation outside the JSON:
+{
+  "ten_x":     { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "eu_based":  { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "stage":     { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "no_harm":   { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "must_have": { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "summary": "<2-3 sentences for pre-screeners: what this company does, key strengths and concerns, overall impression>",
+  "recommendation": "<proceed|discuss|pass>"
+}`
+
+  const message = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 600,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const text = (message.content[0] as { type: string; text: string }).text.trim()
+  return JSON.parse(text)
 }

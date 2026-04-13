@@ -21,6 +21,7 @@ interface ReviewFormProps {
   icMemberId: string
   isPreScreen?: boolean
   sectorIcReviews?: ReviewWithMember[]
+  onForward?: () => void
 }
 
 export default function ReviewForm({ startup, existingReview, icMemberId, isPreScreen = false, sectorIcReviews = [] }: ReviewFormProps) {
@@ -62,6 +63,7 @@ export default function ReviewForm({ startup, existingReview, icMemberId, isPreS
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [passing, setPassing] = useState(false)
+  const [forwarding, setForwarding] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Stage 1 logic
@@ -130,6 +132,24 @@ export default function ReviewForm({ startup, existingReview, icMemberId, isPreS
     }
   }
 
+  async function forwardStartup() {
+    setForwarding(true)
+    try {
+      const res = await fetch(`/api/admin/startups/${startup.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'to_review_sector_ic' }),
+      })
+      if (!res.ok) throw new Error('Failed to forward')
+      setMessage({ type: 'success', text: 'Startup doorgestuurd naar Sector IC.' })
+      router.refresh()
+    } catch {
+      setMessage({ type: 'error', text: 'Doorsturen mislukt.' })
+    } finally {
+      setForwarding(false)
+    }
+  }
+
   if (isPassed) {
     return (
       <div className="space-y-6">
@@ -145,6 +165,67 @@ export default function ReviewForm({ startup, existingReview, icMemberId, isPreS
   return (
     <div className="space-y-6">
       <StartupHeader startup={startup} />
+
+      {/* ── AI PRE-SCREEN SUMMARY (visible to pre-screeners) ── */}
+      {isPreScreen && startup.ai_gate_scores && (
+        <div className="card border-l-4 border-l-violet-400 space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+              <svg className="w-3.5 h-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.416a1 1 0 01-.73.321H9.56a1 1 0 01-.73-.321l-.347-.416z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-900 text-base">AI Pre-Screening</h2>
+              <p className="text-xs text-gray-400">Automatische beoordeling op gating criteria</p>
+            </div>
+            <span className={`ml-auto inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+              startup.ai_gate_scores.recommendation === 'proceed' ? 'bg-green-100 text-green-700' :
+              startup.ai_gate_scores.recommendation === 'discuss' ? 'bg-amber-100 text-amber-700' :
+                                                                     'bg-red-100 text-red-600'
+            }`}>
+              {startup.ai_gate_scores.recommendation === 'proceed' ? 'Doorgaan' :
+               startup.ai_gate_scores.recommendation === 'discuss'  ? 'Bespreken' : 'Afwijzen'}
+            </span>
+          </div>
+
+          {/* Gate scores */}
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+            {([
+              { key: 'ten_x',     label: '10x' },
+              { key: 'eu_based',  label: 'EU' },
+              { key: 'stage',     label: 'Stage' },
+              { key: 'no_harm',   label: 'No Harm' },
+              { key: 'must_have', label: 'Must-Have' },
+            ] as const).map(({ key, label }) => {
+              const gate = startup.ai_gate_scores![key]
+              return (
+                <div key={key} className={`rounded-lg p-3 text-center ${
+                  gate.score === 1  ? 'bg-green-50 border border-green-100' :
+                  gate.score === -1 ? 'bg-red-50 border border-red-100' :
+                                      'bg-gray-50 border border-gray-100'
+                }`}>
+                  <p className={`text-lg font-bold ${
+                    gate.score === 1 ? 'text-green-600' : gate.score === -1 ? 'text-red-500' : 'text-gray-400'
+                  }`}>
+                    {gate.score === 1 ? '✓' : gate.score === -1 ? '✗' : '—'}
+                  </p>
+                  <p className="text-xs font-semibold text-gray-700 mt-0.5">{label}</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-tight">{gate.reason}</p>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* AI summary */}
+          {startup.ai_gate_scores.summary && (
+            <div className="bg-violet-50 rounded-lg p-4">
+              <p className="text-xs text-violet-400 font-medium uppercase tracking-wide mb-1">AI samenvatting</p>
+              <p className="text-sm text-gray-700">{startup.ai_gate_scores.summary}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── SECTOR IC SUMMARY (visible to General IC only) ── */}
       {sectorIcReviews.length > 0 && (
@@ -491,6 +572,23 @@ export default function ReviewForm({ startup, existingReview, icMemberId, isPreS
       {isSubmitted && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-700 text-sm text-center mb-8">
           This review has been submitted and is now locked.
+        </div>
+      )}
+
+      {/* Pre-screener forward button — push to next stage after review */}
+      {isPreScreen && isSubmitted && startup.status === 'pre_screening' && (
+        <div className="card border border-dashed border-gray-200 bg-gray-50 flex flex-col sm:flex-row items-center justify-between gap-3 mb-8">
+          <div>
+            <p className="font-semibold text-gray-800 text-sm">Doorzetten naar Sector IC</p>
+            <p className="text-xs text-gray-500 mt-0.5">Startup is klaar voor beoordeling door het sector-specifieke IC.</p>
+          </div>
+          <button
+            onClick={forwardStartup}
+            disabled={forwarding}
+            className="btn-primary text-sm whitespace-nowrap shrink-0"
+          >
+            {forwarding ? 'Doorsturen…' : 'Doorzetten →'}
+          </button>
         </div>
       )}
     </div>
