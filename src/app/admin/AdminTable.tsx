@@ -1,0 +1,303 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import SectorBadge from '@/components/SectorBadge'
+import StatusBadge from '@/components/StatusBadge'
+import RecommendationBadge from '@/components/RecommendationBadge'
+import EditStartupButton from './EditStartupButton'
+import type { Startup, Recommendation } from '@/lib/types'
+
+export type ReviewerStatus = { name: string; submitted: boolean; draft: boolean; passed: boolean }
+
+export type StartupRow = {
+  startup: Startup
+  reviewCount: number
+  avgScore: number | null
+  yesCnt: number
+  maybeCnt: number
+  noCnt: number
+  overallRec: Recommendation | null
+  reviewers: ReviewerStatus[]
+}
+
+function daysSince(dateStr: string) {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000)
+}
+
+export default function AdminTable({ rows }: { rows: StartupRow[] }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [sending, setSending] = useState(false)
+  const [sendResult, setSendResult] = useState<string | null>(null)
+
+  const allIds = rows.map(r => r.startup.id)
+  const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id))
+
+  function toggle(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(allIds))
+  }
+
+  async function handleBulkSend() {
+    const targets = rows.filter(r => selected.has(r.startup.id))
+    if (!confirm(`Uitnodigingen sturen voor ${targets.length} startup${targets.length !== 1 ? 's' : ''}?`)) return
+
+    setSending(true)
+    setSendResult(null)
+
+    let totalSent = 0
+    let totalFailed = 0
+
+    for (const { startup } of targets) {
+      try {
+        const res = await fetch('/api/admin/send-invitations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ startupId: startup.id, sector: startup.sector }),
+        })
+        const data = await res.json()
+        totalSent += data.count ?? 0
+        totalFailed += data.failed?.length ?? 0
+      } catch {
+        totalFailed++
+      }
+    }
+
+    setSendResult(
+      totalFailed === 0
+        ? `${totalSent} uitnodigingen verstuurd voor ${targets.length} startups`
+        : `${totalSent} verstuurd, ${totalFailed} mislukt`
+    )
+    setSelected(new Set())
+    setSending(false)
+  }
+
+  return (
+    <div className="relative">
+      {/* Desktop table */}
+      <div className="hidden md:block card p-0 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100">
+              <th className="px-4 py-3 w-8">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+              </th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Company</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Sector</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Days</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Reviews</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Avg Score</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Y / M / N</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Overall</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Reviewers</th>
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec, reviewers }) => {
+              const isSelected = selected.has(startup.id)
+              return (
+                <tr
+                  key={startup.id}
+                  className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggle(startup.id)}
+                      className="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div>
+                      <p className="font-medium text-gray-900">{startup.name}</p>
+                      <p className="text-xs text-gray-400 truncate max-w-xs">{startup.one_liner}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={startup.status} />
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {(() => {
+                      const d = daysSince(startup.created_at)
+                      return (
+                        <span className={`text-sm font-medium ${d > 30 ? 'text-red-500' : d > 14 ? 'text-amber-500' : 'text-gray-500'}`}>
+                          {d}d
+                        </span>
+                      )
+                    })()}
+                  </td>
+                  <td className="px-4 py-3 text-center text-gray-700 font-medium">{reviewCount}</td>
+                  <td className="px-4 py-3 text-center font-bold text-gray-800">
+                    {avgScore != null ? avgScore.toFixed(2) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="text-green-600 font-medium">{yesCnt}</span>
+                    {' / '}
+                    <span className="text-amber-600 font-medium">{maybeCnt}</span>
+                    {' / '}
+                    <span className="text-red-500 font-medium">{noCnt}</span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <RecommendationBadge recommendation={overallRec} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {reviewers.length === 0 ? (
+                      <span className="text-xs text-gray-300">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {reviewers.map(r => (
+                          <span
+                            key={r.name}
+                            title={`${r.name} — ${r.submitted ? 'Submitted' : r.draft ? 'Draft' : r.passed ? 'Passed' : 'Not started'}`}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              r.submitted ? 'bg-green-100 text-green-700' :
+                              r.draft     ? 'bg-amber-100 text-amber-700' :
+                              r.passed    ? 'bg-gray-100 text-gray-400 line-through' :
+                                            'bg-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {r.name.split(' ')[0]}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <EditStartupButton startup={startup} />
+                      <Link
+                        href={`/admin/startups/${startup.id}`}
+                        className="text-primary hover:text-primary-dark font-medium transition-colors"
+                      >
+                        View →
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={11} className="px-4 py-10 text-center text-gray-400">
+                  No startups yet. Add your first startup above.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-4">
+        {rows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec }) => {
+          const isSelected = selected.has(startup.id)
+          return (
+            <div
+              key={startup.id}
+              className={`card ${isSelected ? 'ring-2 ring-primary' : ''}`}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggle(startup.id)}
+                  className="mt-1 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Link href={`/admin/startups/${startup.id}`} className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <p className="font-semibold text-gray-900">{startup.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{startup.one_liner}</p>
+                    </div>
+                    <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <StatusBadge status={startup.status} />
+                    <span className="text-xs text-gray-500">{reviewCount} reviews</span>
+                    {avgScore != null && <span className="text-xs font-bold text-gray-700">{avgScore.toFixed(2)}/5</span>}
+                    <span className="text-xs">
+                      <span className="text-green-600">{yesCnt}Y</span>{' '}
+                      <span className="text-amber-600">{maybeCnt}M</span>{' '}
+                      <span className="text-red-500">{noCnt}N</span>
+                    </span>
+                    {overallRec && <RecommendationBadge recommendation={overallRec} />}
+                  </div>
+                </Link>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Bulk action bar */}
+      {(selected.size > 0 || sendResult) && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl">
+          {selected.size > 0 && (
+            <>
+              <span className="text-sm font-medium">
+                {selected.size} startup{selected.size !== 1 ? 's' : ''} geselecteerd
+              </span>
+              <div className="w-px h-4 bg-white/20" />
+              <button
+                onClick={handleBulkSend}
+                disabled={sending}
+                className="flex items-center gap-2 text-sm font-semibold text-accent hover:text-accent/80 transition-colors disabled:opacity-50"
+              >
+                {sending ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    Versturen…
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    Stuur uitnodigingen
+                  </>
+                )}
+              </button>
+              <button onClick={() => setSelected(new Set())} className="text-white/40 hover:text-white/70 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </>
+          )}
+          {sendResult && selected.size === 0 && (
+            <>
+              <span className="text-sm text-green-400 font-medium">{sendResult}</span>
+              <button onClick={() => setSendResult(null)} className="text-white/40 hover:text-white/70 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
