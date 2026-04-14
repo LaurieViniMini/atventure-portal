@@ -50,19 +50,21 @@ Evaluate this startup against our 5 gating criteria and provide a brief assessme
 - Impact: ${startup.impact || '(not provided)'}
 
 **Gating Criteria — score each as 1 (clearly passes), 0 (unclear/neutral), or -1 (concern or fail):**
-1. **10x potential** — Could this startup realistically return 10x or more? Consider: market size, unique approach, scalability, defensibility.
+1. **10x** — Is this solution at least 10x better, faster, cheaper, or higher impact than the current alternative? Look for a step-change improvement, not an incremental one.
 2. **EU-based** — Is the company headquartered in the EU or EEA? Score 1 if yes, -1 if clearly outside, 0 if unclear.
 3. **Pre-seed / Seed stage** — Is the round pre-seed or seed? Score 1 if yes, -1 if Series A or later, 0 if unclear.
 4. **No harm to people & planet** — Is the business model free from harm? Red flags: weapons, gambling, tobacco, fossil fuels, privacy exploitation, predatory practices. Score 1 if clearly no harm, -1 if concern, 0 if neutral.
 5. **Must-have** — Does the startup solve a real, urgent problem (not just a nice-to-have)? Score 1 if clearly must-have, 0 if borderline, -1 if nice-to-have only.
+6. **Scalability** — Can the business model scale beyond the initial market without proportional cost increases? Consider: digital leverage, platform effects, international expansion potential. Score 1 if clearly scalable, 0 if uncertain, -1 if structurally hard to scale.
 
 Respond ONLY with valid JSON — no markdown, no explanation outside the JSON:
 {
-  "ten_x":     { "score": <-1|0|1>, "reason": "<1 sentence>" },
-  "eu_based":  { "score": <-1|0|1>, "reason": "<1 sentence>" },
-  "stage":     { "score": <-1|0|1>, "reason": "<1 sentence>" },
-  "no_harm":   { "score": <-1|0|1>, "reason": "<1 sentence>" },
-  "must_have": { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "ten_x":       { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "eu_based":    { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "stage":       { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "no_harm":     { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "must_have":   { "score": <-1|0|1>, "reason": "<1 sentence>" },
+  "scalability": { "score": <-1|0|1>, "reason": "<1 sentence>" },
   "summary": "<2-3 sentences for pre-screeners: what this company does, key strengths and concerns, overall impression>",
   "recommendation": "<proceed|discuss|pass>"
 }`

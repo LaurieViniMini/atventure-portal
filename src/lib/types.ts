@@ -47,11 +47,12 @@ export interface Startup {
   // AI pre-screening assessment
   ai_summary?: string | null
   ai_gate_scores?: {
-    ten_x:     { score: number; reason: string }
-    eu_based:  { score: number; reason: string }
-    stage:     { score: number; reason: string }
-    no_harm:   { score: number; reason: string }
-    must_have: { score: number; reason: string }
+    ten_x:       { score: number; reason: string }
+    eu_based:    { score: number; reason: string }
+    stage:       { score: number; reason: string }
+    no_harm:     { score: number; reason: string }
+    must_have:   { score: number; reason: string }
+    scalability: { score: number; reason: string }
     summary: string
     recommendation: 'proceed' | 'discuss' | 'pass'
   } | null

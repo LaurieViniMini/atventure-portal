@@ -224,11 +224,12 @@ export default async function StartupDetailPage({ params }: Props) {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {([
-                  { key: 'ten_x',     label: '10x' },
-                  { key: 'eu_based',  label: 'EU' },
-                  { key: 'stage',     label: 'Stage' },
-                  { key: 'no_harm',   label: 'No Harm' },
-                  { key: 'must_have', label: 'Must-Have' },
+                  { key: 'ten_x',       label: '10x' },
+                  { key: 'eu_based',    label: 'EU' },
+                  { key: 'stage',       label: 'Stage' },
+                  { key: 'no_harm',     label: 'No Harm' },
+                  { key: 'must_have',   label: 'Must-Have' },
+                  { key: 'scalability', label: 'Schaalbaar' },
                 ] as const).map(({ key, label }) => {
                   const gate = (startup.ai_gate_scores as NonNullable<typeof startup.ai_gate_scores>)[key]
                   return (
