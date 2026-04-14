@@ -53,15 +53,21 @@ export default async function StartupDetailPage({ params }: Props) {
     .select('*')
     .order('name') as { data: IcMember[] | null }
 
-  // Current explicit reviewer assignments
+  // Current explicit reviewer assignments (incl. last_invited_at)
   const { data: assignments = [] } = await adminClient
     .from('startup_reviewers')
-    .select('ic_member_id')
+    .select('ic_member_id, last_invited_at')
     .eq('startup_id', startup.id)
 
-  const assignedIds = (assignments ?? []).map((a) => a.ic_member_id as string)
+  const assignedIds = (assignments ?? []).map((a) => (a as { ic_member_id: string; last_invited_at?: string | null }).ic_member_id)
   const assignedMembers = (allMembers ?? []).filter((m) => assignedIds.includes(m.id))
   const assignedNames = assignedMembers.map((m) => m.name)
+
+  // All reviews (incl. drafts) for reviewer status
+  const { data: allReviews = [] } = await adminClient
+    .from('reviews')
+    .select('ic_member_id, submitted_at, passed')
+    .eq('startup_id', startup.id)
 
   // Compute aggregates
   const submitted = reviews ?? []
@@ -268,6 +274,18 @@ export default async function StartupDetailPage({ params }: Props) {
             startupId={startup.id}
             allMembers={allMembers ?? []}
             assignedIds={assignedIds}
+            invitedAtMap={Object.fromEntries(
+              (assignments ?? []).map((a) => {
+                const row = a as { ic_member_id: string; last_invited_at?: string | null }
+                return [row.ic_member_id, row.last_invited_at ?? null]
+              })
+            )}
+            reviewStatusMap={Object.fromEntries(
+              (allReviews ?? []).map((r) => [
+                r.ic_member_id,
+                r.submitted_at ? 'submitted' : r.passed ? 'passed' : 'draft',
+              ])
+            )}
           />
         </div>
 

@@ -8,9 +8,15 @@ interface Props {
   startupId: string
   allMembers: IcMember[]
   assignedIds: string[]
+  invitedAtMap: Record<string, string | null>
+  reviewStatusMap: Record<string, 'draft' | 'submitted' | 'passed'>
 }
 
-export default function ReviewerManager({ startupId, allMembers, assignedIds }: Props) {
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+export default function ReviewerManager({ startupId, allMembers, assignedIds, invitedAtMap, reviewStatusMap }: Props) {
   const router = useRouter()
   const [assigned, setAssigned] = useState<Set<string>>(new Set(assignedIds))
   const [pending, startTransition] = useTransition()
@@ -41,7 +47,6 @@ export default function ReviewerManager({ startupId, allMembers, assignedIds }: 
         return next
       })
 
-      // Refresh server props so SendInvitesButton shows updated names
       router.refresh()
     })
   }
@@ -52,8 +57,8 @@ export default function ReviewerManager({ startupId, allMembers, assignedIds }: 
     <div className="space-y-3">
       <p className="text-sm text-gray-500">
         {hasAssignments
-          ? 'Explicit reviewers selected — only these members will see this startup.'
-          : 'No explicit assignment — sector-based access applies.'}
+          ? 'Expliciete reviewers geselecteerd — alleen deze leden zien deze startup.'
+          : 'Geen expliciete toewijzing — sector-gebaseerde toegang geldt.'}
       </p>
 
       {error && (
@@ -63,6 +68,9 @@ export default function ReviewerManager({ startupId, allMembers, assignedIds }: 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {allMembers.map((m) => {
           const isOn = assigned.has(m.id)
+          const invitedAt = invitedAtMap[m.id]
+          const reviewStatus = reviewStatusMap[m.id]
+
           return (
             <button
               key={m.id}
@@ -88,6 +96,24 @@ export default function ReviewerManager({ startupId, allMembers, assignedIds }: 
               <span className="flex-1 min-w-0">
                 <span className="block truncate">{m.name}</span>
                 <span className="block text-xs text-gray-400 truncate">{m.ic_type}</span>
+              </span>
+              <span className="shrink-0 text-right space-y-0.5">
+                {reviewStatus === 'submitted' && (
+                  <span className="block text-xs font-medium text-green-600">Review ingediend</span>
+                )}
+                {reviewStatus === 'draft' && (
+                  <span className="block text-xs font-medium text-amber-500">Bezig met review</span>
+                )}
+                {reviewStatus === 'passed' && (
+                  <span className="block text-xs text-gray-400">Gepasst</span>
+                )}
+                {invitedAt ? (
+                  <span className="block text-xs text-gray-400">
+                    Uitgenodigd {formatDate(invitedAt)}
+                  </span>
+                ) : isOn ? (
+                  <span className="block text-xs text-gray-300">Nog niet uitgenodigd</span>
+                ) : null}
               </span>
             </button>
           )

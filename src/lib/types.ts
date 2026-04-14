@@ -120,4 +120,5 @@ export interface StartupWithStats extends Startup {
 export interface StartupReviewer {
   startup_id: string
   ic_member_id: string
+  last_invited_at?: string | null
 }

@@ -67,6 +67,8 @@ export async function POST(request: Request) {
     }
   )
 
+  const now = new Date().toISOString()
+
   const results = await Promise.allSettled(
     (members ?? []).map(async (member) => {
       const { error } = await anonClient.auth.signInWithOtp({
@@ -77,6 +79,14 @@ export async function POST(request: Request) {
         },
       })
       if (error) throw new Error(`${member.email}: ${error.message}`)
+
+      // Track when the invitation was sent
+      await adminClient
+        .from('startup_reviewers')
+        .update({ last_invited_at: now })
+        .eq('startup_id', startupId)
+        .eq('ic_member_id', member.id)
+
       return member.email
     })
   )

@@ -29,8 +29,13 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState<string | null>(null)
+  const [archivedOpen, setArchivedOpen] = useState(false)
 
-  const allIds = rows.map(r => r.startup.id)
+  const ARCHIVED_STATUSES = ['rejected', 'invested']
+  const activeRows = rows.filter(r => !ARCHIVED_STATUSES.includes(r.startup.status))
+  const archivedRows = rows.filter(r => ARCHIVED_STATUSES.includes(r.startup.status))
+
+  const allIds = activeRows.map(r => r.startup.id)
   const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id))
 
   function toggle(id: string) {
@@ -107,7 +112,7 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec, reviewers }) => {
+            {activeRows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec, reviewers }) => {
               const isSelected = selected.has(startup.id)
               return (
                 <tr
@@ -194,7 +199,7 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
                 </tr>
               )
             })}
-            {rows.length === 0 && (
+            {activeRows.length === 0 && (
               <tr>
                 <td colSpan={11} className="px-4 py-10 text-center text-gray-400">
                   No startups yet. Add your first startup above.
@@ -205,9 +210,78 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
         </table>
       </div>
 
+      {/* Archived (rejected / invested) — collapsible */}
+      {archivedRows.length > 0 && (
+        <div className="hidden md:block mt-4">
+          <button
+            onClick={() => setArchivedOpen(o => !o)}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${archivedOpen ? 'rotate-90' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            Afgewezen / Geïnvesteerd ({archivedRows.length})
+          </button>
+
+          {archivedOpen && (
+            <div className="card p-0 overflow-hidden mt-2 opacity-80">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Company</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Sector</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                    <th className="text-center px-4 py-3 font-medium text-gray-600">Reviews</th>
+                    <th className="text-center px-4 py-3 font-medium text-gray-600">Avg Score</th>
+                    <th className="text-center px-4 py-3 font-medium text-gray-600">Overall</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {archivedRows.map(({ startup, reviewCount, avgScore, overallRec }) => (
+                    <tr key={startup.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-medium text-gray-600">{startup.name}</p>
+                          <p className="text-xs text-gray-400 truncate max-w-xs">{startup.one_liner}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={startup.status} />
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-500">{reviewCount}</td>
+                      <td className="px-4 py-3 text-center font-bold text-gray-600">
+                        {avgScore != null ? avgScore.toFixed(2) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <RecommendationBadge recommendation={overallRec} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/admin/startups/${startup.id}`}
+                          className="text-primary hover:text-primary-dark font-medium transition-colors"
+                        >
+                          View →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Mobile cards */}
       <div className="md:hidden space-y-4">
-        {rows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec }) => {
+        {activeRows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec }) => {
           const isSelected = selected.has(startup.id)
           return (
             <div
@@ -246,6 +320,45 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
           )
         })}
       </div>
+
+      {/* Mobile archived section */}
+      {archivedRows.length > 0 && (
+        <div className="md:hidden mt-4">
+          <button
+            onClick={() => setArchivedOpen(o => !o)}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${archivedOpen ? 'rotate-90' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            Afgewezen / Geïnvesteerd ({archivedRows.length})
+          </button>
+          {archivedOpen && (
+            <div className="space-y-3 mt-2 opacity-80">
+              {archivedRows.map(({ startup, reviewCount, avgScore, overallRec }) => (
+                <Link key={startup.id} href={`/admin/startups/${startup.id}`} className="block card">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <p className="font-semibold text-gray-600">{startup.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{startup.one_liner}</p>
+                    </div>
+                    <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <StatusBadge status={startup.status} />
+                    <span className="text-xs text-gray-500">{reviewCount} reviews</span>
+                    {avgScore != null && <span className="text-xs font-bold text-gray-600">{avgScore.toFixed(2)}/5</span>}
+                    {overallRec && <RecommendationBadge recommendation={overallRec} />}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bulk action bar */}
       {(selected.size > 0 || sendResult) && (
