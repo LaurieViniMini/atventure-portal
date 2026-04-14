@@ -403,7 +403,7 @@ export default async function StartupDetailPage({ params }: Props) {
                         <RecommendationBadge recommendation={review.recommendation} />
                       </td>
                       <td className="px-3 py-3 text-gray-500 max-w-xs">
-                        <p className="truncate">{review.comments || '—'}</p>
+                        <p className="whitespace-pre-line text-xs leading-relaxed">{review.comments || '—'}</p>
                       </td>
                     </tr>
                   ))}
