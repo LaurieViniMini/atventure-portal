@@ -30,12 +30,28 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState<string | null>(null)
   const [archivedOpen, setArchivedOpen] = useState(false)
+  const [filterSector, setFilterSector] = useState('')
+  const [filterReviewer, setFilterReviewer] = useState('')
+  const [filterBizModel, setFilterBizModel] = useState('')
 
   const ARCHIVED_STATUSES = ['rejected', 'invested']
   const activeRows = rows.filter(r => !ARCHIVED_STATUSES.includes(r.startup.status))
   const archivedRows = rows.filter(r => ARCHIVED_STATUSES.includes(r.startup.status))
 
-  const allIds = activeRows.map(r => r.startup.id)
+  // Derive unique sectors and reviewer names from active rows
+  const allSectors = Array.from(new Set(activeRows.map(r => r.startup.sector))).sort()
+  const allReviewerNames = Array.from(
+    new Set(activeRows.flatMap(r => r.reviewers.map(rv => rv.name)))
+  ).sort()
+
+  const filteredRows = activeRows.filter(r => {
+    if (filterSector && r.startup.sector !== filterSector) return false
+    if (filterReviewer && !r.reviewers.some(rv => rv.name === filterReviewer)) return false
+    if (filterBizModel && !(r.startup.business_model_description ?? '').toLowerCase().includes(filterBizModel.toLowerCase())) return false
+    return true
+  })
+
+  const allIds = filteredRows.map(r => r.startup.id)
   const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id))
 
   function toggle(id: string) {
@@ -84,8 +100,54 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
     setSending(false)
   }
 
+  const hasFilters = filterSector || filterReviewer || filterBizModel
+
   return (
     <div className="relative">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <select
+          value={filterSector}
+          onChange={e => setFilterSector(e.target.value)}
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="">Alle sectoren</option>
+          {allSectors.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+
+        <select
+          value={filterReviewer}
+          onChange={e => setFilterReviewer(e.target.value)}
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="">Alle reviewers</option>
+          {allReviewerNames.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+
+        <input
+          type="text"
+          placeholder="Zoek business model…"
+          value={filterBizModel}
+          onChange={e => setFilterBizModel(e.target.value)}
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[200px]"
+        />
+
+        {hasFilters && (
+          <button
+            onClick={() => { setFilterSector(''); setFilterReviewer(''); setFilterBizModel('') }}
+            className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-2"
+          >
+            Wis filters
+          </button>
+        )}
+
+        {hasFilters && (
+          <span className="text-sm text-gray-400 self-center">
+            {filteredRows.length} van {activeRows.length} startups
+          </span>
+        )}
+      </div>
+
       {/* Desktop table */}
       <div className="hidden md:block card p-0 overflow-hidden">
         <table className="w-full text-sm">
@@ -112,7 +174,7 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {activeRows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec, reviewers }) => {
+            {filteredRows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec, reviewers }) => {
               const isSelected = selected.has(startup.id)
               return (
                 <tr
@@ -199,10 +261,10 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
                 </tr>
               )
             })}
-            {activeRows.length === 0 && (
+            {filteredRows.length === 0 && (
               <tr>
                 <td colSpan={11} className="px-4 py-10 text-center text-gray-400">
-                  No startups yet. Add your first startup above.
+                  {hasFilters ? 'Geen startups gevonden met deze filters.' : 'No startups yet. Add your first startup above.'}
                 </td>
               </tr>
             )}
@@ -281,7 +343,7 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-4">
-        {activeRows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec }) => {
+        {filteredRows.map(({ startup, reviewCount, avgScore, yesCnt, maybeCnt, noCnt, overallRec }) => {
           const isSelected = selected.has(startup.id)
           return (
             <div
