@@ -74,7 +74,8 @@ Respond ONLY with valid JSON — no markdown, no explanation outside the JSON:
       max_tokens: 600,
       messages: [{ role: 'user', content: prompt }],
     })
-    const text = (message.content[0] as { type: string; text: string }).text.trim()
+    let text = (message.content[0] as { type: string; text: string }).text.trim()
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
     result = JSON.parse(text)
   } catch (err) {
     return NextResponse.json({ error: 'AI assessment failed: ' + String(err) }, { status: 500 })

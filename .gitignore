@@ -19,3 +19,5 @@ dist/
 *.pem
 npm-debug.log*
 .claude/
+
+.vercel

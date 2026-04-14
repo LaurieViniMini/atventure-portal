@@ -317,6 +317,8 @@ Respond ONLY with valid JSON — no markdown, no explanation outside the JSON:
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const text = (message.content[0] as { type: string; text: string }).text.trim()
+  let text = (message.content[0] as { type: string; text: string }).text.trim()
+  // Strip markdown code fences if present (e.g. ```json ... ```)
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
   return JSON.parse(text)
 }
