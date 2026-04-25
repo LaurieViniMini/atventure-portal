@@ -238,19 +238,20 @@ export default async function StartupDetailPage({ params }: Props) {
                   { key: 'scalability', label: 'Schaalbaar' },
                 ] as const).map(({ key, label }) => {
                   const gate = (startup.ai_gate_scores as NonNullable<typeof startup.ai_gate_scores>)[key]
+                  const score = gate?.score ?? null
                   return (
                     <div key={key} className={`rounded-lg p-3 text-center ${
-                      gate.score === 1  ? 'bg-green-50 border border-green-100' :
-                      gate.score === -1 ? 'bg-red-50 border border-red-100' :
-                                          'bg-gray-50 border border-gray-100'
+                      score === 1  ? 'bg-green-50 border border-green-100' :
+                      score === -1 ? 'bg-red-50 border border-red-100' :
+                                     'bg-gray-50 border border-gray-100'
                     }`}>
                       <p className={`text-lg font-bold ${
-                        gate.score === 1 ? 'text-green-600' : gate.score === -1 ? 'text-red-500' : 'text-gray-400'
+                        score === 1 ? 'text-green-600' : score === -1 ? 'text-red-500' : 'text-gray-400'
                       }`}>
-                        {gate.score === 1 ? '✓' : gate.score === -1 ? '✗' : '—'}
+                        {score === 1 ? '✓' : score === -1 ? '✗' : '—'}
                       </p>
                       <p className="text-xs font-semibold text-gray-700 mt-0.5">{label}</p>
-                      <p className="text-xs text-gray-500 mt-1 leading-tight">{gate.reason}</p>
+                      <p className="text-xs text-gray-500 mt-1 leading-tight">{gate?.reason ?? ''}</p>
                     </div>
                   )
                 })}

@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import type { Sector } from '@/lib/types'
@@ -226,36 +225,24 @@ export async function POST(request: Request) {
     await adminClient.from('startups').update({ status: 'pre_screening' }).eq('id', data.id)
   }
 
-  // Invite all PreScreen ic_members (e.g. Anica) and assign them as reviewers
+  // Auto-assign reviewers (no email — admin sends invitations manually when ready)
+  // Assigns: all PreScreen members + sector-matching IC members (sector or 'All')
   try {
-    const { data: preScreeners } = await adminClient
+    const { data: reviewers } = await adminClient
       .from('ic_members')
-      .select('id, email')
-      .eq('ic_type', 'PreScreen')
+      .select('id')
+      .in('ic_type', ['PreScreen', sector, 'All'])
 
-    if (preScreeners?.length) {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://atventure-portal.vercel.app'
-      const anonClient = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { cookies: { getAll: () => [], setAll: () => {} } }
-      )
-
-      await Promise.all(preScreeners.map(async (m) => {
-        // Assign as reviewer
-        await adminClient.from('startup_reviewers').upsert(
+    if (reviewers?.length) {
+      await Promise.all(reviewers.map((m) =>
+        adminClient.from('startup_reviewers').upsert(
           { startup_id: data.id, ic_member_id: m.id },
           { onConflict: 'startup_id,ic_member_id', ignoreDuplicates: true }
         )
-        // Send magic link
-        await anonClient.auth.signInWithOtp({
-          email: m.email,
-          options: { emailRedirectTo: `${siteUrl}/auth/callback`, shouldCreateUser: true },
-        })
-      }))
+      ))
     }
-  } catch (inviteErr) {
-    console.error('Pre-screener invite failed:', inviteErr)
+  } catch (assignErr) {
+    console.error('Reviewer assignment failed:', assignErr)
   }
 
   return NextResponse.json({ success: true, startup_id: data.id }, { status: 201 })
