@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import SectorBadge from '@/components/SectorBadge'
+import { isAdmin } from '@/lib/is-admin'
 import type { Startup, Review, IcMember } from '@/lib/types'
 
 function daysSince(dateStr: string) {
@@ -29,7 +30,7 @@ export default async function ReviewDashboard() {
     .maybeSingle<IcMember>()
 
   if (!member) {
-    if (user.email === process.env.ADMIN_EMAIL) redirect('/admin')
+    if (isAdmin(user.email)) redirect('/admin')
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="card max-w-sm text-center">
@@ -61,7 +62,7 @@ export default async function ReviewDashboard() {
       .select('*')
       .in('id', assignedIds)
       .neq('status', 'rejected')
-      .order('created_at', { ascending: true })
+      .order('is_urgent', { ascending: false }).order('created_at', { ascending: false })
     startups = data ?? []
   } else if (isPreScreen) {
     // PreScreen members see all startups (they pre-screen everything)
@@ -70,7 +71,7 @@ export default async function ReviewDashboard() {
       .select('*')
       .neq('status', 'rejected')
       .neq('status', 'invested')
-      .order('created_at', { ascending: true })
+      .order('is_urgent', { ascending: false }).order('created_at', { ascending: false })
     startups = (data as Startup[]) ?? []
   } else {
     // Regular IC: sector-based, exclude pre_screening and rejected
@@ -80,7 +81,7 @@ export default async function ReviewDashboard() {
       .neq('status', 'rejected')
       .neq('status', 'pre_screening')
       .neq('status', 'pending_review')
-      .order('created_at', { ascending: true })
+      .order('is_urgent', { ascending: false }).order('created_at', { ascending: false })
 
     if (member.ic_type !== 'All') {
       query = query.eq('sector', member.ic_type)

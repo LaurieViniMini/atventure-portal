@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { isAdmin } from '@/lib/is-admin'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -55,6 +56,5 @@ export async function GET(request: Request) {
   }
 
   // Redirect admin to /admin, all others to /review
-  const isAdmin = user.email === process.env.ADMIN_EMAIL
-  return NextResponse.redirect(`${origin}${isAdmin ? '/admin' : '/review'}`)
+  return NextResponse.redirect(`${origin}${isAdmin(user.email) ? '/admin' : '/review'}`)
 }

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { IcMember } from '@/lib/types'
+import { isAdmin } from '@/lib/is-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ export default async function IcMembersPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  if (user.email !== (process.env.ADMIN_EMAIL ?? '').trim()) redirect('/review')
+  if (!isAdmin(user.email)) redirect('/review')
 
   const adminClient = createAdminClient()
   const { data: members = [] } = await adminClient

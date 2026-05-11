@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
+import { isAdmin } from '@/lib/is-admin'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user || user.email !== (process.env.ADMIN_EMAIL ?? '').trim()) {
+  if (!user || !isAdmin(user.email)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

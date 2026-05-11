@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { isAdmin } from '@/lib/is-admin'
 
 export default async function AdminLayout({
   children,
@@ -13,7 +14,7 @@ export default async function AdminLayout({
 
   if (!user) redirect('/login')
 
-  if (user.email !== (process.env.ADMIN_EMAIL ?? '').trim()) {
+  if (!isAdmin(user.email)) {
     redirect('/review')
   }
 

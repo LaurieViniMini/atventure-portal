@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { isAdmin } from '@/lib/is-admin'
 
 const VALID_STATUSES = [
   'pre_screening', 'to_review_sector_ic', 'to_review_general_ic',
@@ -12,7 +13,7 @@ const VALID_STATUSES = [
 async function requireAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.email !== (process.env.ADMIN_EMAIL ?? '').trim()) return null
+  if (!user || !isAdmin(user.email)) return null
   return user
 }
 

@@ -2,11 +2,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import type { Sector } from '@/lib/types'
+import { isAdmin } from '@/lib/is-admin'
 
 const VALID_SECTORS: Sector[] = ['General', 'Retail', 'Health', 'Food']
 
 async function verifyAdmin(user: { email?: string } | null) {
-  return user?.email === process.env.ADMIN_EMAIL
+  return isAdmin(user?.email)
 }
 
 export async function POST(request: Request) {

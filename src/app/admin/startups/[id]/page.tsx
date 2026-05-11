@@ -14,6 +14,7 @@ import ReviewDetail from './ReviewDetail'
 import DeleteButton from './DeleteButton'
 import AiAssessButton from './AiAssessButton'
 import FlagsUpdater from './FlagsUpdater'
+import { isAdmin } from '@/lib/is-admin'
 import type { Startup, IcMember, ReviewWithMember, Recommendation } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,7 @@ export default async function StartupDetailPage({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  if (user.email !== (process.env.ADMIN_EMAIL ?? '').trim()) redirect('/review')
+  if (!isAdmin(user.email)) redirect('/review')
 
   const adminClient = createAdminClient()
 
