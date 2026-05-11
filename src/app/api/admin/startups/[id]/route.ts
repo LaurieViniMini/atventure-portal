@@ -37,7 +37,7 @@ export async function PATCH(
   }
 
   // Boolean flags (must not be coerced to null)
-  const booleanFields = ['is_urgent', 'is_angel_accelerator']
+  const booleanFields = ['is_urgent', 'is_not_urgent', 'is_already_in_dd', 'is_angel_accelerator']
   for (const field of booleanFields) {
     if (body[field] !== undefined) update[field] = Boolean(body[field])
   }

@@ -207,6 +207,8 @@ export default async function StartupDetailPage({ params }: Props) {
             <FlagsUpdater
               startupId={startup.id}
               isUrgent={startup.is_urgent ?? false}
+              isNotUrgent={startup.is_not_urgent ?? false}
+              isAlreadyInDd={startup.is_already_in_dd ?? false}
               adminNotes={startup.admin_notes ?? null}
               isAngelAccelerator={startup.is_angel_accelerator ?? false}
             />

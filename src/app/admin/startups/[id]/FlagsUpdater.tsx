@@ -6,13 +6,59 @@ import { useRouter } from 'next/navigation'
 interface Props {
   startupId: string
   isUrgent: boolean
+  isNotUrgent: boolean
+  isAlreadyInDd: boolean
   adminNotes: string | null
   isAngelAccelerator: boolean
 }
 
-export default function FlagsUpdater({ startupId, isUrgent, adminNotes, isAngelAccelerator }: Props) {
+function Checkbox({
+  checked,
+  onToggle,
+  disabled,
+  label,
+  activeClass,
+}: {
+  checked: boolean
+  onToggle: () => void
+  disabled: boolean
+  label: string
+  activeClass: string
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+        checked ? activeClass : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+      }`}
+    >
+      <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+        checked ? 'bg-current border-current' : 'border-gray-300'
+      }`}>
+        {checked && (
+          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </span>
+      {label}
+    </button>
+  )
+}
+
+export default function FlagsUpdater({
+  startupId,
+  isUrgent,
+  isNotUrgent,
+  isAlreadyInDd,
+  adminNotes,
+  isAngelAccelerator,
+}: Props) {
   const router = useRouter()
   const [urgent, setUrgent] = useState(isUrgent)
+  const [notUrgent, setNotUrgent] = useState(isNotUrgent)
+  const [alreadyInDd, setAlreadyInDd] = useState(isAlreadyInDd)
   const [angel, setAngel] = useState(isAngelAccelerator)
   const [notes, setNotes] = useState(adminNotes ?? '')
   const [saving, setSaving] = useState(false)
@@ -33,16 +79,14 @@ export default function FlagsUpdater({ startupId, isUrgent, adminNotes, isAngelA
     setSaving(false)
   }
 
-  async function toggleUrgent() {
-    const next = !urgent
-    setUrgent(next)
-    await save({ is_urgent: next })
-  }
-
-  async function toggleAngel() {
-    const next = !angel
-    setAngel(next)
-    await save({ is_angel_accelerator: next })
+  async function toggle(
+    current: boolean,
+    setter: (v: boolean) => void,
+    field: string,
+  ) {
+    const next = !current
+    setter(next)
+    await save({ [field]: next })
   }
 
   async function saveNotes() {
@@ -51,10 +95,10 @@ export default function FlagsUpdater({ startupId, isUrgent, adminNotes, isAngelA
 
   return (
     <div className="space-y-4">
-      {/* Urgency + Angel toggles */}
       <div className="flex flex-wrap gap-3">
+        {/* Urgent */}
         <button
-          onClick={toggleUrgent}
+          onClick={() => toggle(urgent, setUrgent, 'is_urgent')}
           disabled={saving}
           className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
             urgent
@@ -63,29 +107,35 @@ export default function FlagsUpdater({ startupId, isUrgent, adminNotes, isAngelA
           }`}
         >
           <span className={`w-2 h-2 rounded-full ${urgent ? 'bg-red-500' : 'bg-gray-300'}`} />
-          {urgent ? 'Urgent' : 'Niet urgent'}
+          Urgent
         </button>
 
-        <button
-          onClick={toggleAngel}
+        {/* Not urgent */}
+        <Checkbox
+          checked={notUrgent}
+          onToggle={() => toggle(notUrgent, setNotUrgent, 'is_not_urgent')}
           disabled={saving}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
-            angel
-              ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-              : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          <span className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-            angel ? 'bg-amber-400 border-amber-400' : 'border-gray-300'
-          }`}>
-            {angel && (
-              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </span>
-          Angel Accelerator
-        </button>
+          label="Niet urgent"
+          activeClass="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+        />
+
+        {/* Already in DD */}
+        <Checkbox
+          checked={alreadyInDd}
+          onToggle={() => toggle(alreadyInDd, setAlreadyInDd, 'is_already_in_dd')}
+          disabled={saving}
+          label="Already in DD"
+          activeClass="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+        />
+
+        {/* Angel Accelerator */}
+        <Checkbox
+          checked={angel}
+          onToggle={() => toggle(angel, setAngel, 'is_angel_accelerator')}
+          disabled={saving}
+          label="Angel Accelerator"
+          activeClass="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+        />
       </div>
 
       {/* Admin notes */}

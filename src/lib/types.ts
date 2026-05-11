@@ -46,6 +46,8 @@ export interface Startup {
   wix_submission_id?: string | null
   // Admin flags
   is_urgent?: boolean
+  is_not_urgent?: boolean
+  is_already_in_dd?: boolean
   admin_notes?: string | null
   is_angel_accelerator?: boolean
   // AI pre-screening assessment

@@ -210,6 +210,16 @@ export default async function ReviewDashboard() {
                             Urgent
                           </span>
                         )}
+                        {startup.is_not_urgent && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                            Niet urgent
+                          </span>
+                        )}
+                        {startup.is_already_in_dd && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
+                            Already in DD
+                          </span>
+                        )}
                         {startup.is_angel_accelerator && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
                             Angel Accelerator
