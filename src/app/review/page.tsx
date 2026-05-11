@@ -192,107 +192,139 @@ export default async function ReviewDashboard() {
             No startups assigned yet. Check back soon.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {startups.map((startup) => {
               const review = reviewMap.get(startup.id)
               const isPassed = review?.passed
-              const statusLabel = isPassed
-                ? 'Passed'
-                : review?.submitted_at
-                ? 'Submitted'
-                : review
-                ? 'Draft'
-                : 'Not started'
-              const statusClass = isPassed
-                ? 'bg-gray-100 text-gray-400'
-                : review?.submitted_at
-                ? 'bg-green-100 text-green-700'
-                : review
-                ? 'bg-amber-100 text-amber-700'
-                : 'bg-gray-100 text-gray-500'
+              const isSubmitted = !!review?.submitted_at && !isPassed
+              const isDraft = !!review && !review.submitted_at && !isPassed
+
+              // Left border colour based on flag
+              const borderColor = startup.is_urgent
+                ? 'border-l-red-500'
+                : startup.is_angel_accelerator
+                ? 'border-l-amber-400'
+                : startup.is_not_urgent
+                ? 'border-l-green-400'
+                : startup.is_already_in_dd
+                ? 'border-l-blue-400'
+                : 'border-l-gray-200'
+
+              // Submitted cards look clearly "done"
+              const cardBg = isPassed
+                ? 'bg-gray-50 opacity-60'
+                : isSubmitted
+                ? 'bg-green-50/40'
+                : 'bg-white'
 
               return (
                 <Link
                   key={startup.id}
                   href={`/review/${startup.id}`}
-                  className={`card flex flex-col gap-3 hover:shadow-md hover:border-primary/20 transition-all group ${startup.is_urgent ? 'border-l-4 border-l-red-400' : ''}`}
+                  className={`block rounded-xl border border-gray-200 border-l-4 ${borderColor} ${cardBg} px-5 py-4 shadow-sm hover:shadow-md transition-all group`}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+
+                    {/* Left: name + meta */}
                     <div className="flex-1 min-w-0">
+
+                      {/* Flag badges — solid, square-ish, icon-led */}
+                      {(startup.is_urgent || startup.is_angel_accelerator || startup.is_not_urgent || startup.is_already_in_dd) && (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {startup.is_urgent && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-red-500 text-white">
+                              ⚡ Urgent
+                            </span>
+                          )}
+                          {startup.is_angel_accelerator && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-400 text-white">
+                              ✦ Angel Accelerator
+                            </span>
+                          )}
+                          {startup.is_not_urgent && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border border-gray-300 text-gray-500 bg-white">
+                              Niet urgent
+                            </span>
+                          )}
+                          {startup.is_already_in_dd && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-500 text-white">
+                              Already in DD
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Name + sector */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        {startup.is_urgent && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                            Urgent
-                          </span>
-                        )}
-                        {startup.is_not_urgent && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                            Niet urgent
-                          </span>
-                        )}
-                        {startup.is_already_in_dd && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
-                            Already in DD
-                          </span>
-                        )}
-                        {startup.is_angel_accelerator && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
-                            Angel Accelerator
-                          </span>
-                        )}
-                        <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
+                        <h3 className={`font-bold text-base group-hover:text-primary transition-colors ${isPassed ? 'text-gray-400' : 'text-gray-900'}`}>
                           {startup.name}
                         </h3>
-                        <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
+                        {/* Sector: subtle, outline style to differ from flag badges */}
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-normal border border-gray-200 text-gray-500 bg-white">
+                          {startup.sector_raw || startup.sector}
+                        </span>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1 truncate">
+
+                      <p className={`text-sm mt-0.5 truncate ${isPassed ? 'text-gray-400' : 'text-gray-500'}`}>
                         {startup.one_liner}
                       </p>
+
+                      {startup.admin_notes && (
+                        <div className="flex items-start gap-1.5 mt-2 bg-violet-50 border border-violet-100 rounded px-2.5 py-1.5 text-xs text-violet-700">
+                          <svg className="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {startup.admin_notes}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+
+                    {/* Right: review status — prominent */}
+                    <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-1 shrink-0">
+                      {isPassed ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-400">
+                          Overgeslagen
+                        </span>
+                      ) : isSubmitted ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-green-100 text-green-700 border border-green-200">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Ingediend
+                        </span>
+                      ) : isDraft ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.83a4 4 0 01-1.897 1.06l-2.685.671.671-2.685a4 4 0 011.06-1.897z" />
+                          </svg>
+                          Concept
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-primary text-white group-hover:bg-primary/90 transition-colors">
+                          Beoordelen
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </span>
+                      )}
+
+                      {isSubmitted && review.weighted_total != null && (
+                        <span className="text-lg font-extrabold text-green-700">
+                          {review.weighted_total.toFixed(2)}
+                          <span className="text-sm font-normal text-gray-400">/5</span>
+                        </span>
+                      )}
+
                       {(() => {
                         const d = daysSince(startup.created_at)
                         return (
-                          <span className={`text-xs font-medium ${d > 30 ? 'text-red-400' : d > 14 ? 'text-amber-500' : 'text-gray-400'}`}>
+                          <span className={`text-xs ${d > 30 ? 'text-red-400' : d > 14 ? 'text-amber-500' : 'text-gray-300'}`}>
                             {d}d
                           </span>
                         )
                       })()}
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
-                      >
-                        {statusLabel}
-                      </span>
-                      {review?.submitted_at && !isPassed && review.weighted_total != null && (
-                        <span className="text-sm font-bold text-gray-700">
-                          {review.weighted_total.toFixed(2)}
-                          <span className="text-gray-400 font-normal">/5</span>
-                        </span>
-                      )}
-                      <svg
-                        className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
                     </div>
                   </div>
-                  {startup.admin_notes && (
-                    <div className="flex items-start gap-2 bg-blue-50 rounded-lg px-3 py-2 text-sm text-blue-800">
-                      <svg className="w-4 h-4 mt-0.5 shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>{startup.admin_notes}</span>
-                    </div>
-                  )}
                 </Link>
               )
             })}
