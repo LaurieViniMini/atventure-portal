@@ -8,6 +8,34 @@ import RecommendationBadge from '@/components/RecommendationBadge'
 import EditStartupButton from './EditStartupButton'
 import type { Startup, Recommendation } from '@/lib/types'
 
+function flagPriority(s: Startup): number {
+  if (s.is_urgent)            return 1
+  if (s.is_angel_accelerator) return 2
+  if (s.is_already_in_dd)     return 5
+  if (s.is_not_urgent)        return 4
+  return 3
+}
+
+function FlagBadges({ startup }: { startup: Startup }) {
+  if (!startup.is_urgent && !startup.is_angel_accelerator && !startup.is_not_urgent && !startup.is_already_in_dd) return null
+  return (
+    <div className="flex flex-wrap gap-1 mb-1">
+      {startup.is_urgent && (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-red-500 text-white">⚡ Urgent</span>
+      )}
+      {startup.is_angel_accelerator && (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-amber-400 text-white">✦ Angel</span>
+      )}
+      {startup.is_not_urgent && (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border border-gray-300 text-gray-500">Niet urgent</span>
+      )}
+      {startup.is_already_in_dd && (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-blue-500 text-white">In DD</span>
+      )}
+    </div>
+  )
+}
+
 export type ReviewerStatus = { name: string; submitted: boolean; draft: boolean; passed: boolean }
 
 export type StartupRow = {
@@ -33,6 +61,7 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
   const [filterSector, setFilterSector] = useState('')
   const [filterReviewer, setFilterReviewer] = useState('')
   const [filterBizModel, setFilterBizModel] = useState('')
+  const [filterFlag, setFilterFlag] = useState('')
 
   const ARCHIVED_STATUSES = ['rejected', 'invested']
   const activeRows = rows.filter(r => !ARCHIVED_STATUSES.includes(r.startup.status))
@@ -44,12 +73,22 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
     new Set(activeRows.flatMap(r => r.reviewers.map(rv => rv.name)))
   ).sort()
 
-  const filteredRows = activeRows.filter(r => {
-    if (filterSector && r.startup.sector !== filterSector) return false
-    if (filterReviewer && !r.reviewers.some(rv => rv.name === filterReviewer)) return false
-    if (filterBizModel && !(r.startup.business_model_description ?? '').toLowerCase().includes(filterBizModel.toLowerCase())) return false
-    return true
-  })
+  const filteredRows = activeRows
+    .filter(r => {
+      if (filterSector && r.startup.sector !== filterSector) return false
+      if (filterReviewer && !r.reviewers.some(rv => rv.name === filterReviewer)) return false
+      if (filterBizModel && !(r.startup.business_model_description ?? '').toLowerCase().includes(filterBizModel.toLowerCase())) return false
+      if (filterFlag === 'urgent'       && !r.startup.is_urgent)            return false
+      if (filterFlag === 'angel'        && !r.startup.is_angel_accelerator) return false
+      if (filterFlag === 'not_urgent'   && !r.startup.is_not_urgent)        return false
+      if (filterFlag === 'already_in_dd'&& !r.startup.is_already_in_dd)    return false
+      return true
+    })
+    .sort((a, b) => {
+      const diff = flagPriority(a.startup) - flagPriority(b.startup)
+      if (diff !== 0) return diff
+      return new Date(b.startup.created_at).getTime() - new Date(a.startup.created_at).getTime()
+    })
 
   const allIds = filteredRows.map(r => r.startup.id)
   const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id))
@@ -100,7 +139,7 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
     setSending(false)
   }
 
-  const hasFilters = filterSector || filterReviewer || filterBizModel
+  const hasFilters = filterSector || filterReviewer || filterBizModel || filterFlag
 
   return (
     <div className="relative">
@@ -124,6 +163,18 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
           {allReviewerNames.map(n => <option key={n} value={n}>{n}</option>)}
         </select>
 
+        <select
+          value={filterFlag}
+          onChange={e => setFilterFlag(e.target.value)}
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="">Alle prioriteiten</option>
+          <option value="urgent">⚡ Urgent</option>
+          <option value="angel">✦ Angel Accelerator</option>
+          <option value="not_urgent">Niet urgent</option>
+          <option value="already_in_dd">Already in DD</option>
+        </select>
+
         <input
           type="text"
           placeholder="Zoek business model…"
@@ -134,7 +185,7 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
 
         {hasFilters && (
           <button
-            onClick={() => { setFilterSector(''); setFilterReviewer(''); setFilterBizModel('') }}
+            onClick={() => { setFilterSector(''); setFilterReviewer(''); setFilterBizModel(''); setFilterFlag('') }}
             className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-2"
           >
             Wis filters
@@ -191,6 +242,7 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
                   </td>
                   <td className="px-4 py-3">
                     <div>
+                      <FlagBadges startup={startup} />
                       <p className="font-medium text-gray-900">{startup.name}</p>
                       <p className="text-xs text-gray-400 truncate max-w-xs">{startup.one_liner}</p>
                     </div>
@@ -358,6 +410,7 @@ export default function AdminTable({ rows }: { rows: StartupRow[] }) {
                   className="mt-1 rounded border-gray-300 text-primary focus:ring-primary"
                 />
                 <Link href={`/admin/startups/${startup.id}`} className="flex-1 min-w-0">
+                  <FlagBadges startup={startup} />
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
                       <p className="font-semibold text-gray-900">{startup.name}</p>

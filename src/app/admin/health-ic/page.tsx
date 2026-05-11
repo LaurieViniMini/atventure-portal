@@ -10,7 +10,20 @@ import { isAdmin } from '@/lib/is-admin'
 
 export const dynamic = 'force-dynamic'
 
-export default async function HealthICPage() {
+function flagPriority(s: Startup): number {
+  if (s.is_urgent)            return 1
+  if (s.is_angel_accelerator) return 2
+  if (s.is_already_in_dd)     return 5
+  if (s.is_not_urgent)        return 4
+  return 3
+}
+
+interface Props {
+  searchParams: Promise<{ flag?: string }>
+}
+
+export default async function HealthICPage({ searchParams }: Props) {
+  const { flag } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -62,6 +75,21 @@ export default async function HealthICPage() {
 
     return { startup, avgScore, yesCnt, maybeCnt, noCnt, overallRec, reviewerStatuses, reviewCount: sr.length }
   })
+  .sort((a, b) => {
+    const diff = flagPriority(a.startup) - flagPriority(b.startup)
+    if (diff !== 0) return diff
+    return new Date(b.startup.created_at).getTime() - new Date(a.startup.created_at).getTime()
+  })
+
+  const filteredRows = flag
+    ? rows.filter(r => {
+        if (flag === 'urgent')        return r.startup.is_urgent
+        if (flag === 'angel')         return r.startup.is_angel_accelerator
+        if (flag === 'not_urgent')    return r.startup.is_not_urgent
+        if (flag === 'already_in_dd') return r.startup.is_already_in_dd
+        return true
+      })
+    : rows
 
   const total = rows.length
   const reviewed = rows.filter(r => r.reviewCount > 0).length
@@ -161,17 +189,61 @@ export default async function HealthICPage() {
         )}
 
 
+        {/* Flag filters */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {([
+            { value: '',             label: 'Alle' },
+            { value: 'urgent',       label: '⚡ Urgent' },
+            { value: 'angel',        label: '✦ Angel Accelerator' },
+            { value: 'not_urgent',   label: 'Niet urgent' },
+            { value: 'already_in_dd',label: 'Already in DD' },
+          ] as const).map(opt => (
+            <Link
+              key={opt.value}
+              href={opt.value ? `/admin/health-ic?flag=${opt.value}` : '/admin/health-ic'}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+                (flag ?? '') === opt.value
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-primary/40'
+              }`}
+            >
+              {opt.label}
+              {opt.value === '' && rows.length > 0 && ` (${rows.length})`}
+            </Link>
+          ))}
+        </div>
+
         {rows.length === 0 ? (
           <div className="card text-center py-12 text-gray-400">
             Geen Health startups in de pipeline.
           </div>
+        ) : filteredRows.length === 0 ? (
+          <div className="card text-center py-10 text-gray-400">
+            Geen startups met dit filter.
+          </div>
         ) : (
           <div className="space-y-4">
-            {rows.map(({ startup, avgScore, yesCnt, maybeCnt, noCnt, overallRec, reviewerStatuses, reviewCount }) => (
+            {filteredRows.map(({ startup, avgScore, yesCnt, maybeCnt, noCnt, overallRec, reviewerStatuses, reviewCount }) => (
               <div key={startup.id} className="card">
                 {/* Header row */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                   <div className="flex-1 min-w-0">
+                    {(startup.is_urgent || startup.is_angel_accelerator || startup.is_not_urgent || startup.is_already_in_dd) && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {startup.is_urgent && (
+                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-xs font-bold bg-red-500 text-white">⚡ Urgent</span>
+                        )}
+                        {startup.is_angel_accelerator && (
+                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-xs font-bold bg-amber-400 text-white">✦ Angel Accelerator</span>
+                        )}
+                        {startup.is_not_urgent && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border border-gray-300 text-gray-500 bg-white">Niet urgent</span>
+                        )}
+                        {startup.is_already_in_dd && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-500 text-white">Already in DD</span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="text-lg font-bold text-gray-900">{startup.name}</h2>
                       <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
