@@ -78,7 +78,7 @@ export default async function HealthICPage({ searchParams }: Props) {
   .sort((a, b) => {
     const diff = flagPriority(a.startup) - flagPriority(b.startup)
     if (diff !== 0) return diff
-    return new Date(b.startup.created_at).getTime() - new Date(a.startup.created_at).getTime()
+    return new Date(a.startup.created_at).getTime() - new Date(b.startup.created_at).getTime()
   })
 
   const filteredRows = flag

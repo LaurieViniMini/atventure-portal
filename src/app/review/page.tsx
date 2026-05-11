@@ -22,7 +22,7 @@ function sortStartups(list: Startup[]): Startup[] {
   return [...list].sort((a, b) => {
     const diff = flagPriority(a) - flagPriority(b)
     if (diff !== 0) return diff
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   })
 }
 
