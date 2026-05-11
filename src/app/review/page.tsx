@@ -10,6 +10,22 @@ function daysSince(dateStr: string) {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000)
 }
 
+function flagPriority(s: Startup): number {
+  if (s.is_urgent)            return 1
+  if (s.is_angel_accelerator) return 2
+  if (s.is_already_in_dd)     return 5
+  if (s.is_not_urgent)        return 4
+  return 3 // neutraal
+}
+
+function sortStartups(list: Startup[]): Startup[] {
+  return [...list].sort((a, b) => {
+    const diff = flagPriority(a) - flagPriority(b)
+    if (diff !== 0) return diff
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
+}
+
 export const dynamic = 'force-dynamic'
 
 export default async function ReviewDashboard() {
@@ -62,8 +78,8 @@ export default async function ReviewDashboard() {
       .select('*')
       .in('id', assignedIds)
       .neq('status', 'rejected')
-      .order('is_urgent', { ascending: false }).order('created_at', { ascending: false })
-    startups = data ?? []
+      .order('created_at', { ascending: false })
+    startups = sortStartups(data ?? [])
   } else if (isPreScreen) {
     // PreScreen members see all startups (they pre-screen everything)
     const { data } = await adminClient
@@ -71,8 +87,8 @@ export default async function ReviewDashboard() {
       .select('*')
       .neq('status', 'rejected')
       .neq('status', 'invested')
-      .order('is_urgent', { ascending: false }).order('created_at', { ascending: false })
-    startups = (data as Startup[]) ?? []
+      .order('created_at', { ascending: false })
+    startups = sortStartups((data as Startup[]) ?? [])
   } else {
     // Regular IC: sector-based, exclude pre_screening and rejected
     let query = adminClient
@@ -81,14 +97,14 @@ export default async function ReviewDashboard() {
       .neq('status', 'rejected')
       .neq('status', 'pre_screening')
       .neq('status', 'pending_review')
-      .order('is_urgent', { ascending: false }).order('created_at', { ascending: false })
+      .order('created_at', { ascending: false })
 
     if (member.ic_type !== 'All') {
       query = query.eq('sector', member.ic_type)
     }
 
     const { data } = await query
-    startups = (data as Startup[]) ?? []
+    startups = sortStartups((data as Startup[]) ?? [])
   }
 
   // Get all reviews by this member
