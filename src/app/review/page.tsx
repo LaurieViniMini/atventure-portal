@@ -61,7 +61,7 @@ export default async function ReviewDashboard() {
       .select('*')
       .in('id', assignedIds)
       .neq('status', 'rejected')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
     startups = data ?? []
   } else if (isPreScreen) {
     // PreScreen members see all startups (they pre-screen everything)
@@ -70,7 +70,7 @@ export default async function ReviewDashboard() {
       .select('*')
       .neq('status', 'rejected')
       .neq('status', 'invested')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
     startups = (data as Startup[]) ?? []
   } else {
     // Regular IC: sector-based, exclude pre_screening and rejected
@@ -80,7 +80,7 @@ export default async function ReviewDashboard() {
       .neq('status', 'rejected')
       .neq('status', 'pre_screening')
       .neq('status', 'pending_review')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
 
     if (member.ic_type !== 'All') {
       query = query.eq('sector', member.ic_type)
@@ -198,53 +198,74 @@ export default async function ReviewDashboard() {
                 <Link
                   key={startup.id}
                   href={`/review/${startup.id}`}
-                  className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:shadow-md hover:border-primary/20 transition-all group"
+                  className={`card flex flex-col gap-3 hover:shadow-md hover:border-primary/20 transition-all group ${startup.is_urgent ? 'border-l-4 border-l-red-400' : ''}`}
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
-                        {startup.name}
-                      </h3>
-                      <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {startup.is_urgent && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                            Urgent
+                          </span>
+                        )}
+                        {startup.is_angel_accelerator && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
+                            Angel Accelerator
+                          </span>
+                        )}
+                        <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
+                          {startup.name}
+                        </h3>
+                        <SectorBadge sector={startup.sector} sectorRaw={startup.sector_raw} />
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1 truncate">
+                        {startup.one_liner}
+                      </p>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1 truncate">
-                      {startup.one_liner}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {(() => {
-                      const d = daysSince(startup.created_at)
-                      return (
-                        <span className={`text-xs font-medium ${d > 30 ? 'text-red-400' : d > 14 ? 'text-amber-500' : 'text-gray-400'}`}>
-                          {d}d
-                        </span>
-                      )
-                    })()}
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
-                    >
-                      {statusLabel}
-                    </span>
-                    {review?.submitted_at && !isPassed && review.weighted_total != null && (
-                      <span className="text-sm font-bold text-gray-700">
-                        {review.weighted_total.toFixed(2)}
-                        <span className="text-gray-400 font-normal">/5</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {(() => {
+                        const d = daysSince(startup.created_at)
+                        return (
+                          <span className={`text-xs font-medium ${d > 30 ? 'text-red-400' : d > 14 ? 'text-amber-500' : 'text-gray-400'}`}>
+                            {d}d
+                          </span>
+                        )
+                      })()}
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
+                      >
+                        {statusLabel}
                       </span>
-                    )}
-                    <svg
-                      className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
+                      {review?.submitted_at && !isPassed && review.weighted_total != null && (
+                        <span className="text-sm font-bold text-gray-700">
+                          {review.weighted_total.toFixed(2)}
+                          <span className="text-gray-400 font-normal">/5</span>
+                        </span>
+                      )}
+                      <svg
+                        className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
                   </div>
+                  {startup.admin_notes && (
+                    <div className="flex items-start gap-2 bg-blue-50 rounded-lg px-3 py-2 text-sm text-blue-800">
+                      <svg className="w-4 h-4 mt-0.5 shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{startup.admin_notes}</span>
+                    </div>
+                  )}
                 </Link>
               )
             })}

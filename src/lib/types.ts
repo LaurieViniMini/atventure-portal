@@ -44,6 +44,10 @@ export interface Startup {
   impact?: string | null
   how_heard?: string | null
   wix_submission_id?: string | null
+  // Admin flags
+  is_urgent?: boolean
+  admin_notes?: string | null
+  is_angel_accelerator?: boolean
   // AI pre-screening assessment
   ai_summary?: string | null
   ai_gate_scores?: {

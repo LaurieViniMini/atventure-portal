@@ -35,14 +35,20 @@ export async function PATCH(
     update.status = body.status
   }
 
-  // All editable fields
+  // Boolean flags (must not be coerced to null)
+  const booleanFields = ['is_urgent', 'is_angel_accelerator']
+  for (const field of booleanFields) {
+    if (body[field] !== undefined) update[field] = Boolean(body[field])
+  }
+
+  // All editable text fields
   const fields = [
     'name', 'one_liner', 'sector', 'sector_raw', 'pitch_deck_url',
     'website', 'location', 'founding_date',
     'contact_name', 'contact_email', 'contact_phone',
     'business_model_description', 'stage',
     'funding_raised', 'mrr', 'funding_target', 'amount_committed', 'round_type',
-    'traction', 'impact', 'how_heard',
+    'traction', 'impact', 'how_heard', 'admin_notes',
   ]
   for (const field of fields) {
     if (body[field] !== undefined) update[field] = body[field] || null

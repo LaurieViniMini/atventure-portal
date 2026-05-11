@@ -13,6 +13,7 @@ import ReviewerManager from './ReviewerManager'
 import ReviewDetail from './ReviewDetail'
 import DeleteButton from './DeleteButton'
 import AiAssessButton from './AiAssessButton'
+import FlagsUpdater from './FlagsUpdater'
 import type { Startup, IcMember, ReviewWithMember, Recommendation } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -199,6 +200,15 @@ export default async function StartupDetailPage({ params }: Props) {
               <DeleteButton startupId={startup.id} />
             </div>
             <StatusUpdater startupId={startup.id} currentStatus={startup.status} />
+          </div>
+          <div className="border-t border-gray-100 pt-4">
+            <h2 className="font-semibold text-gray-900 mb-3">Prioriteit &amp; notities</h2>
+            <FlagsUpdater
+              startupId={startup.id}
+              isUrgent={startup.is_urgent ?? false}
+              adminNotes={startup.admin_notes ?? null}
+              isAngelAccelerator={startup.is_angel_accelerator ?? false}
+            />
           </div>
         </div>
 
